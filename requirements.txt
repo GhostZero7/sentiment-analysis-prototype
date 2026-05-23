@@ -1,0 +1,5 @@
+apify-client>=1.8.1
+python-dotenv>=1.0.1
+pandas>=2.2.2
+nltk>=3.9.1
+langdetect>=1.0.9
