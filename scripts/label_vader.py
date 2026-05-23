@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.sentiment.vader_analyzer import get_vader_scores
+from src.preprocessing.anonymiser import anonymise_text
 
 
 def _safe_to_csv(frame: pd.DataFrame, output_path: Path, *, rerun_suffix: str) -> Path:
@@ -59,7 +60,9 @@ def main() -> int:
         print("Input file must contain a 'processed_text' column.")
         return 1
 
-    scores = df["processed_text"].fillna("").map(get_vader_scores)
+    df = df.copy()
+    df["processed_text"] = df["processed_text"].fillna("").map(anonymise_text)
+    scores = df["processed_text"].map(get_vader_scores)
     scores_df = pd.json_normalize(scores)
     labeled = pd.concat([df.reset_index(drop=True), scores_df], axis=1)
 

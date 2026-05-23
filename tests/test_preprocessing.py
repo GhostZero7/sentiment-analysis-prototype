@@ -17,6 +17,7 @@ from src.preprocessing.cleaner import (
     remove_stopwords,
     tokenize,
 )
+from src.preprocessing.anonymiser import anonymise_text
 
 
 def test_normalize_text_removes_urls_and_noise():
@@ -90,3 +91,8 @@ def test_build_preview_reports_pipeline_counts():
     preview = build_preview(df)
     assert preview["raw_rows"] == 3
     assert preview["word_count_gt_3"] == 2
+
+
+def test_anonymise_text_removes_manual_names():
+    text = "angela baker exactly we are waiting for mark mwandila"
+    assert anonymise_text(text) == "exactly we are waiting for"
