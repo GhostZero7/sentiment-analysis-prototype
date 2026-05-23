@@ -50,6 +50,15 @@ def apply_local_correction(text: str, base_compound: float, base_label: str) -> 
             "local_correction_terms": "",
         }
 
+    if "fyabupuba" in tokens:
+        return {
+            "corrected_compound": -1.0,
+            "corrected_label": "negative",
+            "local_correction_applied": True,
+            "local_correction_score": -1.0,
+            "local_correction_terms": "fyabupuba",
+        }
+
     correction_score = sum(match.weight for match in matches)
     corrected_compound = max(-1.0, min(1.0, float(base_compound) + correction_score))
 

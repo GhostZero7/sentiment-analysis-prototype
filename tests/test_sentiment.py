@@ -23,6 +23,7 @@ def test_vader_scores_return_expected_shape():
 
 
 def test_local_correction_overrides_known_negative_term():
-    scores = get_vader_scores("ba zesco today fyabupuba")
+    scores = get_vader_scores("ba zesco today fyabupuba and we are happy")
     assert scores["label"] == "negative"
     assert scores["local_correction_applied"] is True
+    assert scores["corrected_compound"] == -1.0

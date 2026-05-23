@@ -7,14 +7,3 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 logs/
-
-# Local data artifacts
-data/raw/*.csv
-data/raw/*.json
-data/raw/*.txt
-data/processed/**/*.csv
-data/processed/**/*.png
-data/models/*.pkl
-data/models/*.joblib
-data/results/*.csv
-data/results/*.png
