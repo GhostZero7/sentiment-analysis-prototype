@@ -90,13 +90,11 @@ def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any]:
         or f"generated-{hash((text, item.get('timestamp')))}"
     )
     timestamp = item.get("time") or item.get("timestamp") or item.get("createdAt") or _utc_now_iso()
-    author_name = item.get("authorName") or item.get("username") or item.get("ownerName") or ""
 
     return {
         "comment_id": str(comment_id),
         "text": str(text).strip(),
         "timestamp": str(timestamp),
-        "author_name": str(author_name).strip(),
         "source_url": source_url,
     }
 
@@ -109,7 +107,6 @@ def fetch_comments(url: str, max_comments: int | None = None) -> list[dict[str, 
     - comment_id
     - text
     - timestamp
-    - author_name
     - source_url
     """
     cleaned_url = _normalize_facebook_url((url or "").strip())

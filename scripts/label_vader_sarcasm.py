@@ -1,4 +1,4 @@
-"""Label the stage 2 cleaned comments with VADER sentiment."""
+"""Label cleaned comments with sarcasm-aware VADER sentiment."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.sentiment.sarcasm import is_sarcastic
 from src.sentiment.vader_analyzer import get_vader_scores
 
 
 def _safe_to_csv(frame: pd.DataFrame, output_path: Path, *, rerun_suffix: str) -> Path:
-    """Write a CSV, falling back to a rerun file if the target is locked."""
     try:
         frame.to_csv(output_path, index=False)
         return output_path
@@ -27,11 +27,11 @@ def _safe_to_csv(frame: pd.DataFrame, output_path: Path, *, rerun_suffix: str) -
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Add VADER scores to the processed comments file.")
+    parser = argparse.ArgumentParser(description="Apply sarcasm detection before VADER sentiment labeling.")
     parser.add_argument(
         "--english-only",
         action="store_true",
-        help="Use the strict-English stage 2 file as input and write an English-only labeled output.",
+        help="Use the strict-English stage 2 file as input.",
     )
     parser.add_argument(
         "--input",
@@ -40,14 +40,14 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "comments_labeled_vader.csv"),
-        help="Output CSV path for the VADER-labeled file.",
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "comments_labeled_vader_sarcasm.csv"),
+        help="Output CSV path for the sarcasm-aware VADER labeled file.",
     )
     args = parser.parse_args()
 
     if args.english_only:
         args.input = str(PROJECT_ROOT / "data" / "processed" / "cleaned" / "comments_stage2_strict_english.csv")
-        args.output = str(PROJECT_ROOT / "data" / "processed" / "labeled" / "comments_labeled_vader_english_only.csv")
+        args.output = str(PROJECT_ROOT / "data" / "processed" / "labeled" / "comments_labeled_vader_sarcasm_english_only.csv")
 
     input_path = Path(args.input)
     if not input_path.is_file():
@@ -59,16 +59,30 @@ def main() -> int:
         print("Input file must contain a 'processed_text' column.")
         return 1
 
+    df = df.copy()
+    df["is_sarcastic"] = df["processed_text"].fillna("").map(is_sarcastic)
+
     scores = df["processed_text"].fillna("").map(get_vader_scores)
     scores_df = pd.json_normalize(scores)
     labeled = pd.concat([df.reset_index(drop=True), scores_df], axis=1)
 
+    if "label" in labeled.columns:
+        sarcastic_mask = labeled["is_sarcastic"] & labeled["label"].fillna("").ne("negative")
+        labeled.loc[sarcastic_mask, "label"] = "negative"
+
+    if "corrected_label" in labeled.columns:
+        sarcastic_mask = labeled["is_sarcastic"] & labeled["corrected_label"].fillna("").ne("negative")
+        labeled.loc[sarcastic_mask, "corrected_label"] = "negative"
+
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     saved_to = _safe_to_csv(labeled, output_path, rerun_suffix="rerun")
-    print(f"Saved VADER-labeled comments to {saved_to} ({len(labeled)} rows)")
+    sarcastic_count = int(labeled["is_sarcastic"].sum())
+    print(f"Saved sarcasm-aware VADER comments to {saved_to} ({len(labeled)} rows)")
+    print(f"Sarcastic comments detected: {sarcastic_count}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
