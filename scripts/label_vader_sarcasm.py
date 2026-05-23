@@ -40,14 +40,14 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "comments_labeled_vader_sarcasm.csv"),
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label.csv"),
         help="Output CSV path for the sarcasm-aware VADER labeled file.",
     )
     args = parser.parse_args()
 
     if args.english_only:
         args.input = str(PROJECT_ROOT / "data" / "processed" / "cleaned" / "comments_stage2_strict_english.csv")
-        args.output = str(PROJECT_ROOT / "data" / "processed" / "labeled" / "comments_labeled_vader_sarcasm_english_only.csv")
+        args.output = str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_english_only.csv")
 
     input_path = Path(args.input)
     if not input_path.is_file():
@@ -85,4 +85,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
