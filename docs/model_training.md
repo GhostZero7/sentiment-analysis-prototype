@@ -7,19 +7,16 @@ This project trains classical sentiment models on the finalized labeled dataset:
 
 ## Training Flow
 
-1. Load the labeled CSV.
+1. Load the persisted train and test CSV files.
 2. Use `processed_text` as the input feature text.
 3. Use `corrected_label` as the target label when available.
-4. Split the dataset with stratified sampling:
-   - 80% train
-   - 20% test
-5. Fit a shared `TfidfVectorizer`.
-6. Train three baseline models:
+4. Fit a shared `TfidfVectorizer` on the training split.
+5. Train three baseline models:
    - Naive Bayes
    - Logistic Regression
    - Linear SVM
-7. Evaluate on the held-out 20% test set.
-8. Save models and metrics to disk.
+6. Evaluate on the held-out test split.
+7. Save models and metrics to disk.
 
 ## Persistent Train/Test Files
 
@@ -37,7 +34,7 @@ python scripts/split_train_test.py --input data/processed/labeled/final_label.cs
 ## Training Command
 
 ```powershell
-python scripts/train_models.py --input data/processed/labeled/final_label.csv
+python scripts/train_models.py --train-input data/processed/labeled/final_label_train.csv --test-input data/processed/labeled/final_label_test.csv
 ```
 
 ## Prediction Command
