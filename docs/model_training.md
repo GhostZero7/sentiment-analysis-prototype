@@ -21,6 +21,19 @@ This project trains classical sentiment models on the finalized labeled dataset:
 7. Evaluate on the held-out 20% test set.
 8. Save models and metrics to disk.
 
+## Persistent Train/Test Files
+
+You can also persist the split as separate CSV files:
+
+- `data/processed/labeled/final_label_train.csv`
+- `data/processed/labeled/final_label_test.csv`
+
+Create them with:
+
+```powershell
+python scripts/split_train_test.py --input data/processed/labeled/final_label.csv
+```
+
 ## Training Command
 
 ```powershell
@@ -46,4 +59,3 @@ Evaluation outputs are written to:
 
 - `data/results/model_metrics.csv`
 - `data/results/training_summary.json`
-
