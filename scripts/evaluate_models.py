@@ -51,6 +51,7 @@ def evaluate_models(
     text_column: str = DEFAULT_TEXT_COLUMN,
     label_column: str = DEFAULT_LABEL_COLUMN,
     models_dir: str | Path = PROJECT_ROOT / "data" / "models",
+    results_dir: str | Path = RESULTS_DIR,
 ) -> dict[str, object]:
     """Evaluate the saved models against the held-out test split."""
     df = load_labeled_data(test_dataset_path, text_column=text_column, label_column=label_column)
@@ -65,8 +66,9 @@ def evaluate_models(
     x_test_vec = vectorizer.transform(df[text_column].astype(str))
     y_true = df[target_column].astype(str)
 
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    cm_dir = RESULTS_DIR / "confusion_matrices"
+    results_root = Path(results_dir)
+    results_root.mkdir(parents=True, exist_ok=True)
+    cm_dir = results_root / "confusion_matrices"
     cm_dir.mkdir(parents=True, exist_ok=True)
 
     summary_rows = []
@@ -97,10 +99,10 @@ def evaluate_models(
         plt.close(fig)
 
     summary_df = pd.DataFrame(summary_rows)
-    summary_path = RESULTS_DIR / "evaluation_summary.csv"
+    summary_path = results_root / "evaluation_summary.csv"
     summary_saved_to = _safe_to_csv(summary_df, summary_path, rerun_suffix="rerun")
 
-    reports_path = RESULTS_DIR / "classification_reports.json"
+    reports_path = results_root / "classification_reports.json"
     reports_saved_to = _safe_write_text(json.dumps(reports, indent=2), reports_path, rerun_suffix="rerun")
 
     return {
@@ -133,6 +135,11 @@ def main() -> int:
         default=str(PROJECT_ROOT / "data" / "models"),
         help="Directory with trained model artifacts.",
     )
+    parser.add_argument(
+        "--results-dir",
+        default=str(RESULTS_DIR),
+        help="Directory for evaluation outputs.",
+    )
     args = parser.parse_args()
 
     try:
@@ -141,6 +148,7 @@ def main() -> int:
             text_column=args.text_column,
             label_column=args.label_column,
             models_dir=args.models_dir,
+            results_dir=args.results_dir,
         )
     except Exception as exc:
         print(f"Evaluation failed: {exc}")
@@ -159,4 +167,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

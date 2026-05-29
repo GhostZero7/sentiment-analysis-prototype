@@ -36,6 +36,11 @@ def main() -> int:
         help="Text column to vectorize.",
     )
     parser.add_argument("--random-state", type=int, default=42, help="Random seed.")
+    parser.add_argument(
+        "--artifact-subdir",
+        default="roberta",
+        help="Subdirectory for RoBERTa-trained model artifacts and metrics.",
+    )
     args = parser.parse_args()
 
     try:
@@ -45,6 +50,7 @@ def main() -> int:
             text_column=args.text_column,
             label_column=args.label_column,
             random_state=args.random_state,
+            artifact_subdir=args.artifact_subdir,
         )
     except Exception as exc:
         print(f"Training failed: {exc}")
@@ -62,4 +68,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

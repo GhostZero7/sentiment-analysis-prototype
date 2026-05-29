@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -11,19 +12,38 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import LinearSVC
 
-from .utils import (
-    DEFAULT_LABEL_COLUMN,
-    DEFAULT_TEXT_COLUMN,
-    MODELS_DIR,
-    RESULTS_DIR,
-    build_vectorizer,
-    ensure_directories,
-    evaluate_predictions,
-    fit_vectorizer,
-    load_labeled_data,
-    save_joblib,
-    select_target_column,
-)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from .utils import (
+        DEFAULT_LABEL_COLUMN,
+        DEFAULT_TEXT_COLUMN,
+        MODELS_DIR,
+        RESULTS_DIR,
+        build_vectorizer,
+        ensure_directories,
+        evaluate_predictions,
+        fit_vectorizer,
+        load_labeled_data,
+        save_joblib,
+        select_target_column,
+    )
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from src.models.utils import (
+        DEFAULT_LABEL_COLUMN,
+        DEFAULT_TEXT_COLUMN,
+        MODELS_DIR,
+        RESULTS_DIR,
+        build_vectorizer,
+        ensure_directories,
+        evaluate_predictions,
+        fit_vectorizer,
+        load_labeled_data,
+        save_joblib,
+        select_target_column,
+    )
 
 
 def _json_default(value):
@@ -66,9 +86,12 @@ def train_models(
     text_column: str = DEFAULT_TEXT_COLUMN,
     label_column: str = DEFAULT_LABEL_COLUMN,
     random_state: int = 42,
+    artifact_subdir: str = "",
 ) -> dict[str, object]:
     """Train Naive Bayes, Logistic Regression, and SVM models."""
-    ensure_directories()
+    model_output_dir = MODELS_DIR / artifact_subdir if artifact_subdir else MODELS_DIR
+    results_output_dir = RESULTS_DIR / artifact_subdir if artifact_subdir else RESULTS_DIR
+    ensure_directories(model_output_dir, results_output_dir)
     train_df = load_labeled_data(
         train_dataset_path,
         text_column=text_column,
@@ -122,12 +145,13 @@ def train_models(
         "text_column": text_column,
         "label_column": target_column,
         "random_state": random_state,
+        "artifact_subdir": artifact_subdir,
         "train_rows": int(len(train_df)),
         "test_rows": int(len(test_df)),
         "models": {},
     }
 
-    save_joblib(vectorizer, MODELS_DIR / "vectorizer.joblib")
+    save_joblib(vectorizer, model_output_dir / "vectorizer.joblib")
 
     metrics_rows = []
     for model_name, model in models.items():
@@ -144,15 +168,15 @@ def train_models(
                 "f1_weighted": metrics["f1_weighted"],
             }
         )
-        save_joblib(fitted, MODELS_DIR / f"{model_name}.joblib")
+        save_joblib(fitted, model_output_dir / f"{model_name}.joblib")
 
     metrics_df = pd.DataFrame(metrics_rows)
-    metrics_path = RESULTS_DIR / "model_metrics.csv"
+    metrics_path = results_output_dir / "model_metrics.csv"
     metrics_saved_to = _safe_to_csv(metrics_df, metrics_path, rerun_suffix="rerun")
     results["metrics_path"] = str(metrics_saved_to)
-    results["vectorizer_path"] = str(MODELS_DIR / "vectorizer.joblib")
+    results["vectorizer_path"] = str(model_output_dir / "vectorizer.joblib")
 
-    summary_path = RESULTS_DIR / "training_summary.json"
+    summary_path = results_output_dir / "training_summary.json"
     summary_saved_to = _safe_write_text(json.dumps(results, indent=2, default=_json_default), summary_path, rerun_suffix="rerun")
     results["summary_path"] = str(summary_saved_to)
     return results
@@ -181,6 +205,11 @@ def main() -> int:
         help="Text column to vectorize.",
     )
     parser.add_argument("--random-state", type=int, default=42, help="Random seed.")
+    parser.add_argument(
+        "--artifact-subdir",
+        default="",
+        help="Optional subdirectory under data/models and data/results for saved artifacts.",
+    )
     args = parser.parse_args()
 
     try:
@@ -190,6 +219,7 @@ def main() -> int:
             text_column=args.text_column,
             label_column=args.label_column,
             random_state=args.random_state,
+            artifact_subdir=args.artifact_subdir,
         )
     except Exception as exc:
         print(f"Training failed: {exc}")

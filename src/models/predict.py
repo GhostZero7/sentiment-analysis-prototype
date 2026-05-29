@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-from .utils import MODELS_DIR, load_joblib
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from .utils import MODELS_DIR, load_joblib
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from src.models.utils import MODELS_DIR, load_joblib
 
 
 def load_artifacts(models_dir: str | Path = MODELS_DIR) -> dict[str, Any]:
@@ -79,15 +87,20 @@ def main() -> int:
         default="processed_text",
         help="Text column when using --input.",
     )
+    parser.add_argument(
+        "--models-dir",
+        default=str(MODELS_DIR),
+        help="Directory containing saved vectorizer/model artifacts.",
+    )
     args = parser.parse_args()
 
     try:
         if args.input:
-            predicted = predict_csv(args.input, text_column=args.text_column)
+            predicted = predict_csv(args.input, text_column=args.text_column, models_dir=args.models_dir)
             print(predicted.head().to_string())
             return 0
         if args.text:
-            predicted = predict_texts([args.text])
+            predicted = predict_texts([args.text], models_dir=args.models_dir)
             print(predicted.to_string(index=False))
             return 0
         print("Provide either --input or --text.")
@@ -99,4 +112,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

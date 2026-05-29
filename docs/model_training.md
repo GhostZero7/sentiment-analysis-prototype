@@ -99,5 +99,20 @@ Expected alternate files:
 
 Helper scripts:
 
+- `scripts/label_roberta.py`
 - `scripts/split_train_test_roberta.py`
 - `scripts/train_models_roberta.py`
+
+Create the RoBERTa-labeled dataset with:
+
+```powershell
+python scripts/label_roberta.py --input data/processed/labeled/final_label.csv --output data/processed/labeled/final_label_roberta.csv
+```
+
+Then split and train the RoBERTa branch separately:
+
+```powershell
+python scripts/split_train_test_roberta.py --input data/processed/labeled/final_label_roberta.csv
+python scripts/train_models_roberta.py --train-input data/processed/labeled/final_label_roberta_train.csv --test-input data/processed/labeled/final_label_roberta_test.csv
+python scripts/evaluate_models.py --test-input data/processed/labeled/final_label_roberta_test.csv --models-dir data/models/roberta --results-dir data/results/roberta --label-column roberta_label
+```

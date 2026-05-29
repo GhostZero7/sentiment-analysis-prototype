@@ -9,7 +9,7 @@ from typing import Any
 import joblib
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
+from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import accuracy_score, classification_report, precision_recall_fscore_support
 
 
@@ -32,10 +32,15 @@ class DatasetBundle:
     y_test: pd.Series
 
 
-def ensure_directories() -> None:
+def ensure_directories(
+    models_dir: str | Path | None = None,
+    results_dir: str | Path | None = None,
+) -> None:
     """Create data output directories if they do not exist."""
-    MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    model_root = Path(models_dir) if models_dir is not None else MODELS_DIR
+    results_root = Path(results_dir) if results_dir is not None else RESULTS_DIR
+    model_root.mkdir(parents=True, exist_ok=True)
+    results_root.mkdir(parents=True, exist_ok=True)
 
 
 def load_labeled_data(
@@ -156,4 +161,3 @@ def save_joblib(obj: Any, path: str | Path) -> Path:
 def load_joblib(path: str | Path) -> Any:
     """Load a joblib artifact from disk."""
     return joblib.load(Path(path))
-
