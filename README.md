@@ -6,6 +6,7 @@ This prototype now includes:
 
 - Apify-based Facebook comment collection
 - preprocessing and sarcasm-aware sentiment labeling
+- NRC emotion scoring for anger, hope, fear, trust, and frustration
 - persistent train/test dataset splits
 - baseline model training with Naive Bayes, Logistic Regression, and SVM
 - evaluation reports with confusion matrices

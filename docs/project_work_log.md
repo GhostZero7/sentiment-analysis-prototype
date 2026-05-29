@@ -45,6 +45,23 @@ Saved sentiment outputs:
 - `data/processed/labeled/comments_labeled_vader.csv`
 - `data/processed/labeled/comments_labeled_vader_english_only.csv`
 
+## NRC Emotion Analysis
+
+We added NRC emotion scoring to match the system design and methodology chapters.
+
+The NRC layer now extracts normalized emotion scores for:
+- anger
+- anticipation
+- fear
+- trust
+- sadness
+
+We also derive project-specific values for:
+- hope, mapped from anticipation
+- frustration, mapped from anger and sadness
+
+These emotion scores are appended to the labeled datasets alongside VADER sentiment so the final data includes both polarity and emotion features.
+
 ## Sarcasm Detection
 
 We added a standalone heuristic sarcasm detector tuned for ZESCO comments.
@@ -68,6 +85,7 @@ Canonical final outputs:
 These final files include:
 - `is_sarcastic`
 - VADER scores
+- NRC emotion scores
 - `label`
 - `corrected_label`
 
@@ -89,4 +107,3 @@ Current recommended flow:
 
 - The codebase still keeps preprocessing, sentiment, and sarcasm logic separated into dedicated scripts and modules.
 - The final labeled dataset is now sarcasm-aware and better suited for ZESCO code-switched comments.
-

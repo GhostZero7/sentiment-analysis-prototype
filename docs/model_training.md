@@ -18,6 +18,8 @@ This project trains classical sentiment models on the finalized labeled dataset:
 6. Evaluate on the held-out test split.
 7. Save models and metrics to disk.
 
+The labeled files also now carry NRC emotion scores so the dataset retains both polarity and emotion features for analysis and future modeling.
+
 ## Evaluation Report
 
 Generate confusion matrices and a metrics summary from the held-out test split:

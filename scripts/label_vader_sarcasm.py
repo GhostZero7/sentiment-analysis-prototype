@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.sentiment.sarcasm import is_sarcastic
+from src.sentiment.nrc_analyzer import get_nrc_scores
 from src.sentiment.vader_analyzer import get_vader_scores
 
 
@@ -62,9 +63,10 @@ def main() -> int:
     df = df.copy()
     df["is_sarcastic"] = df["processed_text"].fillna("").map(is_sarcastic)
 
-    scores = df["processed_text"].fillna("").map(get_vader_scores)
-    scores_df = pd.json_normalize(scores)
-    labeled = pd.concat([df.reset_index(drop=True), scores_df], axis=1)
+    processed_text = df["processed_text"].fillna("")
+    vader_scores_df = pd.json_normalize(processed_text.map(get_vader_scores))
+    nrc_scores_df = pd.json_normalize(processed_text.map(get_nrc_scores))
+    labeled = pd.concat([df.reset_index(drop=True), vader_scores_df, nrc_scores_df], axis=1)
 
     if "label" in labeled.columns:
         sarcastic_mask = labeled["is_sarcastic"] & labeled["label"].fillna("").ne("negative")
