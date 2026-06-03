@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.evaluate_models import evaluate_models
+from scripts.models.shared.evaluate_models import evaluate_models
 
 
 def main() -> int:

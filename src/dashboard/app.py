@@ -161,7 +161,7 @@ def main() -> None:
             if image_path is not None:
                 st.image(str(image_path), caption=f"{selected_model} confusion matrix", use_container_width=True)
             else:
-                st.warning("Confusion matrix image not found. Run `scripts/evaluate_models.py` first.")
+                st.warning("Confusion matrix image not found. Run `scripts/models/vader/evaluate_models.py` first.")
 
         st.subheader("Training Summary")
         if summary:

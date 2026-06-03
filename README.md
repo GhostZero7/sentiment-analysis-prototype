@@ -37,7 +37,7 @@ cp .env.example .env
 ### Run Data Download
 
 ```bash
-python scripts/download_data.py --url "https://www.facebook.com/..."
+python scripts/collection/download_data.py --url "https://www.facebook.com/..."
 ```
 
 Output will be written to `data/raw/comments.csv` by default.
@@ -52,6 +52,7 @@ Scripts are grouped by purpose:
 - `scripts/models/`
 - `scripts/models/vader/`
 - `scripts/models/roberta/`
+- `scripts/models/shared/` for shared evaluation helpers
 
 1. Use `scripts/models/vader/split_train_test.py` to create:
    - `data/processed/labeled/training/final_label_train.csv`

@@ -16,7 +16,6 @@ from .cleaner import (
     remove_stopwords,
     tokenize,
 )
-from .anonymiser import anonymise_text
 
 __all__ = [
     "CleaningConfig",
@@ -32,6 +31,5 @@ __all__ = [
     "process_text",
     "remove_emojis",
     "remove_stopwords",
-    "anonymise_text",
     "tokenize",
 ]

@@ -105,6 +105,7 @@ The scripts are now organized by purpose:
 - `scripts/models/`
 - `scripts/models/vader/`
 - `scripts/models/roberta/`
+- `scripts/models/shared/` for shared model evaluation helpers
 
 The VADER labeling and model training steps now run row-by-row or model-by-model with progress messages and failure logs, so any problematic comments or model steps are visible during execution instead of failing silently.
 
@@ -117,9 +118,9 @@ The training and evaluation scripts read from those folders by default.
 
 ## Repository State
 
-- Git repository initialized locally.
+- Git repository initialized locally and connected to GitHub.
 - Corpus and processed outputs are tracked in git.
-- No git remote is configured yet, so push requires a remote URL to be added first.
+- Changes are pushed to the `master` branch.
 
 ## Notes
 
