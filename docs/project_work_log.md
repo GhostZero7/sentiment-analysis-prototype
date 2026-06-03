@@ -36,10 +36,20 @@ Saved cleaned outputs:
 
 We added VADER-based sentiment labeling with a local correction layer for Zambian code-switching.
 
-Local sentiment rules:
-- `fyabupuba` is a hard negative override.
-- `bwino` is a positive hint.
-- `awe` is a negative hint.
+The local lexicon now lives in:
+- `data/lexicons/local_sentiment_lexicon.csv`
+
+The lexicon stores:
+- local/code-switched term
+- English meaning
+- sentiment type
+- correction weight
+- notes for explanation
+
+The VADER correction layer now reads this CSV, supports slash-separated variants, supports short phrase matches, and records matched terms in `local_correction_terms`.
+
+Important current rule:
+- `fyabupuba` and `ifyabupuba` are hard negative overrides.
 
 Saved sentiment outputs:
 - `data/processed/labeled/comments_labeled_vader.csv`
@@ -122,6 +132,15 @@ Training is now intentionally train-only:
 - `scripts/models/roberta/train_models.py` reads the RoBERTa-labeled training file and saves model artifacts.
 - evaluation/testing is handled separately by the matching `evaluate_models.py` scripts.
 - accuracy, F1, classification reports, and confusion matrices are generated only during evaluation.
+
+The VADER models were retrained after expanding the local lexicon.
+
+Latest VADER evaluation:
+- Naive Bayes accuracy: 0.6614
+- Logistic Regression accuracy: 0.7025
+- SVM accuracy: 0.7134
+
+The RoBERTa-labeled branch was refreshed from the updated final dataset and retrained/evaluated.
 
 ## Repository State
 

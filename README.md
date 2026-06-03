@@ -6,6 +6,7 @@ This prototype now includes:
 
 - Apify-based Facebook comment collection
 - preprocessing and sarcasm-aware sentiment labeling
+- CSV-based local Zambian sentiment lexicon for code-switched comments
 - NRC emotion scoring for anger, hope, fear, trust, and frustration
 - persistent train/test dataset splits
 - baseline model training with Naive Bayes, Logistic Regression, and SVM
@@ -41,6 +42,14 @@ python scripts/collection/download_data.py --url "https://www.facebook.com/..."
 ```
 
 Output will be written to `data/raw/comments.csv` by default.
+
+## Local Lexicon
+
+The local sentiment lexicon is stored at:
+
+- `data/lexicons/local_sentiment_lexicon.csv`
+
+It contains Zambian/code-switched terms, meanings, sentiment type, weights, and notes. The VADER analyzer loads this CSV during labeling and records matched terms in `local_correction_terms`, making the correction layer explainable.
 
 ## Current Training Flow
 

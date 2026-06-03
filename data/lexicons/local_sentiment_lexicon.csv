@@ -1,0 +1,129 @@
+term,meaning,sentiment,weight,notes
+fyabupuba/ifyabupuba,stupid things/nonsense,negative,-1.0,hard negative
+awe,exasperation/no,negative,-0.7,flips positive statements
+bwino,good/fine (often sarcastic),sarcasm_marker,-0.5,context dependent
+mwayamba,you have started (trouble),negative,-0.7,complaint about resuming bad behaviour
+mwapoleni,how are you? (sarcastic),sarcasm_marker,-0.4,used sarcastically after a problem
+mwabashani,you have messed up,negative,-0.8,direct blame
+bane,guys,neutral,0.0,intensifier
+naimwe,you (plural accusatory),negative,-0.4,softens complaint
+ninshi,so/then,neutral,0.0,common sentence starter
+mukwai/mweh,please/I tell you,neutral,0.0,adds urgency
+kuti,like/that,sarcasm_marker,-0.3,introduces exaggerated claim
+manje/komanje,but now (frustration),negative,-0.3,expresses annoyance
+tekanya,just wait (sarcastic),sarcasm_marker,-0.4,often "tekanyeni"
+zee/vazee/ba zee,dismissal/exasperation,negative,-0.5,"oh man, come on"
+fyabufi/ifyabupupa ifi,this is nonsense,negative,-1.0,strong complaint
+chandi/mwandi,truly/please,neutral,0.0,amplifier
+yaba,that's it (sarcastic),sarcasm_marker,-0.3,ironic conclusion
+tate/tata,father/sir (ironic),sarcasm_marker,-0.2,sarcastic respect
+tefintu,it's nothing/useless,negative,-0.7,dismissive
+kaya,I don't know,negative,-0.3,expresses helplessness
+bah,no (emphatic),negative,-0.6,strong refusal
+yakosa/yakosa kwena,it's difficult,negative,-0.7,complaint of hardship
+nalakwa/tinalakwa chani,what have we done wrong?,negative,-0.6,rhetorical complaint
+tufta/twafwa,we are dying,negative,-0.8,strong complaint of extreme hardship
+chapwa,it's finished/done,neutral,0.0,often "chapwa fye"
+fye,only/just,neutral,0.0,intensifier
+kwena,but/really,neutral,0.0,adds urgency
+lekeni,leave it/stop,negative,-0.4,dismissive
+mulebako/mulebe,you should be serious,negative,-0.5,accusation of incompetence
+mukalamba,you are big (sarcastic),sarcasm_marker,-0.5,sarcastic praise
+bana/bana ba,children of (insult),negative,-0.6,e.g., "bana ba nfwiiti"
+imbwa/ba imbwa,dogs (insult),negative,-1.0,strong insult
+nkumba,pig (insult),negative,-0.9,strong insult
+mungulu/umungulu,nonsense/rubbish,negative,-0.8,general dismissive
+ubuteko,nonsense,negative,-0.8,same as "mungulu"
+amalaiti/malaiti,lights/electricity (sarcastic),sarcasm_marker,-0.2,used in complaints about lack of power
+balipena,they have messed up,negative,-0.9,strong blame
+bachilamo,they have no sense,negative,-0.8,common complaint about ZESCO
+ba fikala,they are seated (doing nothing),negative,-0.6,implies laziness
+fikopo,a fool,negative,-0.9,insult
+imbwa ya,dog of (insult),negative,-1.0,"imbwa yanu"
+mulepontako,you are joking/playing too much,negative,-0.7,accusing of not being serious
+chabe,just/only,neutral,0.0,often "ni chabe"
+bwangu bwangu,quickly quickly (sarcastic),sarcasm_marker,-0.3,demanding but sarcastic when unfulfilled
+fwaka/fwakatili,they are finished/useless,negative,-0.8,"ba fwaka"
+kuwayawaya,nonsense/useless,negative,-0.8,similar to "fyabupuba"
+ba mbuzi,goats (insult),negative,-0.8,offensive
+mulekelesa,you are finishing us,negative,-1.0,severe hardship
+ubufi,darkness/nonsense,negative,-0.7,double meaning
+tapali,there is nothing,negative,-0.5,"tapali malaiti"
+nefyo/nefyo fye,it is what it is,neutral,0.0,resigned
+nsambilile,I have learned my lesson (sarcastic),sarcasm_marker,-0.3,irony after bad experience
+mwebantu,you people (exclamation),neutral,0.0,attention‑grabbing
+fyonse fye,everything is just,neutral,0.0,dismissive
+napanono,little by little (sarcastic),sarcasm_marker,-0.3,things getting worse slowly
+tefye,it's not (emphatic denial),negative,-0.5,"tefye ifyo"
+uyu/aba,this one/these ones (dismissive),negative,-0.4,"aba ba Zesco"
+po sana,well done (sarcastic),sarcasm_marker,0.4,sarcastic praise (positive weight, but negative in context)
+shani,what?/how? (rhetorical),neutral,0.0,expresses disbelief
+kaili,again/also (sarcastic),sarcasm_marker,-0.2,"kaili this"
+fyaleluka,they have gone mad,negative,-0.9,strong criticism
+inshila,way/method (sarcastic),sarcasm_marker,-0.3,"inshila iyi"
+tebako,there is none,negative,-0.5,"tebako malaiti"
+tabaleka,they never stop,negative,-0.6,"tabaleka no loadshedding"
+ninshi ndefyaila,so I am tired/fed up,negative,-0.8,expression of exhaustion
+mulibafu,you are useless,negative,-1.0,strong insult
+muleke,stop it (dismissive),negative,-0.5,"muleke ifyo"
+fyabupuba fye,just nonsense,negative,-1.0,emphatic
+kuti walila,you would cry (sarcastic),sarcasm_marker,-0.4,"kuti walila"
+akuna,there is no,negative,-0.5,"akuna power"
+ndafya,I am finished/tired,negative,-0.8,"nda fya"
+tachona,it's not seen/hopeless,negative,-0.7,"tachona malaiti"
+chifundo,mercy/pity (sarcastic),sarcasm_marker,-0.3,"chifundo chani?"
+zedi,very/truly,neutral,0.0,intensifier
+ba macho,clever ones (sarcastic),sarcasm_marker,0.2,sarcastic praise for incompetence
+muyaye,forever (sarcastic),sarcasm_marker,-0.2,"muyaye uku"
+mulibako nchito,you have no work (insult),negative,-0.7,accusing of laziness
+bamano,they are clever (sarcastic),sarcasm_marker,0.3,sarcastic praise
+nifibe,it's dark,negative,-0.4,literal + complaint
+balalila,they are crying (sarcastic),sarcasm_marker,-0.3,"balalila"
+chipuba/fipuba,stupid/stupid things,negative,-0.9,"chipuba" - a fool
+mwesu,at our place,neutral,0.0,location reference
+ba nfwiiti,witches (insult),negative,-0.8,insult for saboteurs
+mwakana,you have refused,negative,-0.6,"mwakana"
+tacisupa,it's not progressing,negative,-0.6,no improvement
+napi,where? (rhetorical),neutral,0.0,"napi amalaiti?"
+ichibeleshi,this useless thing,negative,-0.8,"ichi beleshi"
+ichinono,a little (sarcastic),sarcasm_marker,-0.2,"ichinono"
+ba mbutuma,those who are late (sarcastic),sarcasm_marker,-0.3,criticising slow response
+twalishiba,we know (sarcastic),sarcasm_marker,-0.2,"twalishiba"
+ma case,the issues/problems,negative,-0.4,"ma case ya Zesco"
+chawa,it's broken/over,negative,-0.7,"chawa"
+taumfwa,you don't listen,negative,-0.6,complaint about being ignored
+mulabuta,you are dreaming/joking,negative,-0.6,"mulabuta"
+twafikilapo,we have had enough,negative,-0.7,exhaustion
+bakajalwa,they will be cursed,negative,-0.5,threat
+chitema,heart/emotion,negative,-0.5,"chitema kwalamba" - it pains
+fipondo,tricks/nonsense,negative,-0.7,"fipondo fya Zesco"
+tafula,they are finished (insult),negative,-0.8,"tafula"
+ibe,look (exclamation),neutral,0.0,"ibe!"
+baba,father (sarcastic respect),sarcasm_marker,-0.2,sarcastic before complaint
+nyoko,your mother (insult),negative,-1.0,vulgar
+mulima,you are a farmer (insult uneducated),negative,-0.6,dismissive
+ba nkalata,letter people (sarcastic educated),sarcasm_marker,0.2,mocking complaint writers
+nangu,or/even (rhetorical),neutral,0.0,"nangu nichani?"
+nangu mwati,what do you expect? (rhetorical),neutral,0.0,often sarcastic
+bambo,father (sarcastic),sarcasm_marker,-0.2,"bambo" - oh dear
+mwapuseni,you have fooled us,negative,-0.7,accusation
+twakula,we have grown (sarcastic),sarcasm_marker,-0.3,"twakula" - we have grown (but still suffer)
+cila cila,every day (complaint),negative,-0.5,"cila cila malaiti yayenda"
+fuma apa,get out of here (dismissive),negative,-0.6,"fuma apa"
+baleba,they are lying,negative,-0.7,accusation
+nacema,it's bad,negative,-0.8,"nacema"
+tacipali,there is none,negative,-0.5,"tacipali malaiti"
+nshita,time,neutral,0.0,"nshita yonse" - all the time
+mulecheche,you are joking/playing,negative,-0.6,"mulecheche"
+bayamba,they have started,negative,-0.6,"bayamba ubufi"
+balalambila,they are confusing us,negative,-0.7,"balalambila"
+fisakasono,problems/complications,negative,-0.6,"fisakasono fya Zesco"
+balituta,they are mocking us,negative,-0.7,feeling of disrespect
+temwa,love (sarcastic),sarcasm_marker,0.3,"temwa?" - love?
+uyu wamwene,this one (dismissive),negative,-0.4,pointing at ZESCO
+ba lubemba,Bemba people (stereotype),neutral,0.0,can be neutral or joking
+lelo,today (emphatic),neutral,0.0,"lelo nipa one"
+nipa,the first day of month,neutral,0.0,"nipa wanu"
+mwe,you (plural emphatic),neutral,0.0,adds weight
+kabili,again (complaint),negative,-0.3,"kabili"
+pali,there is (rhetorical),neutral,0.0,"pali malaiti?"
