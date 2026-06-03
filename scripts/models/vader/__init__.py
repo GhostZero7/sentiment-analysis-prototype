@@ -1,0 +1,1 @@
+"""VADER-trained model entrypoints."""

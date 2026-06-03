@@ -103,6 +103,8 @@ The scripts are now organized by purpose:
 - `scripts/preprocessing/`
 - `scripts/sentiment/`
 - `scripts/models/`
+- `scripts/models/vader/`
+- `scripts/models/roberta/`
 
 The VADER labeling and model training steps now run row-by-row or model-by-model with progress messages and failure logs, so any problematic comments or model steps are visible during execution instead of failing silently.
 

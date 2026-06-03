@@ -25,7 +25,7 @@ The labeled files also now carry NRC emotion scores so the dataset retains both 
 Generate confusion matrices and a metrics summary from the held-out test split:
 
 ```powershell
-python scripts/evaluate_models.py --test-input data/processed/labeled/final_label_test.csv
+python scripts/models/vader/evaluate_models.py
 ```
 
 This writes:
@@ -44,19 +44,19 @@ You can also persist the split as separate CSV files:
 Create them with:
 
 ```powershell
-python scripts/split_train_test.py --input data/processed/labeled/final_label.csv
+python scripts/models/vader/split_train_test.py
 ```
 
 ## Training Command
 
 ```powershell
-python scripts/train_models.py --train-input data/processed/labeled/final_label_train.csv --test-input data/processed/labeled/final_label_test.csv
+python scripts/models/vader/train_models.py
 ```
 
 ## Prediction Command
 
 ```powershell
-python src/models/predict.py --text "sample comment here"
+python scripts/models/vader/predict_models.py --text "sample comment here"
 ```
 
 ## Dashboard
@@ -101,9 +101,10 @@ Expected alternate files:
 
 Helper scripts:
 
-- `scripts/label_roberta.py`
-- `scripts/split_train_test_roberta.py`
-- `scripts/train_models_roberta.py`
+- `scripts/sentiment/label_roberta.py`
+- `scripts/models/roberta/split_train_test.py`
+- `scripts/models/roberta/train_models.py`
+- `scripts/models/roberta/evaluate_models.py`
 
 Create the RoBERTa-labeled dataset with:
 
@@ -114,7 +115,7 @@ python scripts/sentiment/label_roberta.py
 Then split and train the RoBERTa branch separately:
 
 ```powershell
-python scripts/models/split_train_test_roberta.py
-python scripts/models/train_models_roberta.py
-python scripts/models/evaluate_models_roberta.py
+python scripts/models/roberta/split_train_test.py
+python scripts/models/roberta/train_models.py
+python scripts/models/roberta/evaluate_models.py
 ```

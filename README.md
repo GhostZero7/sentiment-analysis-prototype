@@ -50,14 +50,16 @@ Scripts are grouped by purpose:
 - `scripts/preprocessing/`
 - `scripts/sentiment/`
 - `scripts/models/`
+- `scripts/models/vader/`
+- `scripts/models/roberta/`
 
-1. Use `scripts/models/split_train_test.py` to create:
+1. Use `scripts/models/vader/split_train_test.py` to create:
    - `data/processed/labeled/final_label_train.csv`
    - `data/processed/labeled/final_label_test.csv`
 2. Train models:
-   - `python scripts/models/train_models.py`
+   - `python scripts/models/vader/train_models.py`
 3. Evaluate models:
-   - `python scripts/models/evaluate_models.py`
+   - `python scripts/models/vader/evaluate_models.py`
 4. Launch the dashboard:
    - `streamlit run src/dashboard/app.py`
 
@@ -67,7 +69,7 @@ If you want to generate a separate RoBERTa-labeled dataset and train a second mo
 
 ```powershell
 python scripts/sentiment/label_roberta.py
-python scripts/models/split_train_test_roberta.py
-python scripts/models/train_models_roberta.py
-python scripts/models/evaluate_models_roberta.py
+python scripts/models/roberta/split_train_test.py
+python scripts/models/roberta/train_models.py
+python scripts/models/roberta/evaluate_models.py
 ```
