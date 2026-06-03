@@ -16,8 +16,10 @@ from .cleaner import (
     remove_stopwords,
     tokenize,
 )
+from .relevance import assess_relevance
 
 __all__ = [
+    "assess_relevance",
     "CleaningConfig",
     "build_preview",
     "clean_frame",

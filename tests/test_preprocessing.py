@@ -18,6 +18,7 @@ from src.preprocessing.cleaner import (
     tokenize,
 )
 from src.preprocessing.anonymiser import anonymise_text
+from src.preprocessing.relevance import assess_relevance
 
 
 def test_normalize_text_removes_urls_and_noise():
@@ -96,3 +97,21 @@ def test_build_preview_reports_pipeline_counts():
 def test_anonymise_text_removes_manual_names():
     text = "angela baker exactly we are waiting for mark mwandila"
     assert anonymise_text(text) == "exactly we are waiting for"
+
+
+def test_relevance_accepts_zesco_power_comment():
+    result = assess_relevance("Ba Zesco the power has gone again after two hours")
+    assert result["is_relevant"] is True
+    assert "zesco" in result["relevance_terms"]
+
+
+def test_relevance_accepts_load_shedding_phrase():
+    result = assess_relevance("Load shedding schedule is confusing today")
+    assert result["is_relevant"] is True
+    assert "load shedding" in result["relevance_terms"]
+
+
+def test_relevance_rejects_unrelated_comment():
+    result = assess_relevance("Happy birthday my friend enjoy your day")
+    assert result["is_relevant"] is False
+    assert result["relevance_reason"] == "matched_off_topic_terms_only"

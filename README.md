@@ -6,6 +6,7 @@ This prototype now includes:
 
 - Apify-based Facebook comment collection
 - preprocessing and sarcasm-aware sentiment labeling
+- relevance review files for separating energy-related and unrelated comments
 - CSV-based local Zambian sentiment lexicon for code-switched comments
 - NRC emotion scoring for anger, hope, fear, trust, and frustration
 - persistent train/test dataset splits
@@ -50,6 +51,22 @@ The local sentiment lexicon is stored at:
 - `data/lexicons/local_sentiment_lexicon.csv`
 
 It contains Zambian/code-switched terms, meanings, sentiment type, weights, and notes. The VADER analyzer loads this CSV during labeling and records matched terms in `local_correction_terms`, making the correction layer explainable.
+
+## Relevance Review
+
+Create files for manually checking whether comments are actually about ZESCO, electricity, load shedding, tariffs, or energy-service experience:
+
+```powershell
+python scripts/preprocessing/filter_relevance.py
+```
+
+This writes:
+
+- `data/processed/relevance/all_comments_relevance.csv`
+- `data/processed/relevance/relevant_comments.csv`
+- `data/processed/relevance/irrelevant_comments.csv`
+
+These files are for review first. Training still uses `final_label.csv` until the relevance filter has been inspected and approved.
 
 ## Current Training Flow
 

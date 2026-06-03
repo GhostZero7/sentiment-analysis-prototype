@@ -32,6 +32,31 @@ Saved cleaned outputs:
 - `data/processed/cleaned/comments_stage2_emoji_stopword_lemma.csv`
 - `data/processed/cleaned/comments_stage2_strict_english.csv`
 
+## Relevance Review
+
+We added a separate relevance review step before making relevance affect training.
+
+The script:
+- `scripts/preprocessing/filter_relevance.py`
+
+It scores each final labeled comment using ZESCO/electricity/load-shedding/tariff/energy-service keywords and writes:
+- `data/processed/relevance/all_comments_relevance.csv`
+- `data/processed/relevance/relevant_comments.csv`
+- `data/processed/relevance/irrelevant_comments.csv`
+
+Each row includes:
+- `is_relevant`
+- `relevance_score`
+- `relevance_reason`
+- `relevance_terms`
+
+These files are meant for manual monitoring first, so we can inspect false positives and false negatives before excluding comments from training.
+
+Current relevance review output:
+- total scored comments: 4,135
+- relevant comments: 2,813
+- irrelevant comments: 1,322
+
 ## Sentiment Labeling
 
 We added VADER-based sentiment labeling with a local correction layer for Zambian code-switching.
