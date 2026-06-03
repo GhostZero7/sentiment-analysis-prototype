@@ -21,11 +21,6 @@ def main() -> int:
         help="Training split CSV file for the RoBERTa-labeled path.",
     )
     parser.add_argument(
-        "--test-input",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "testing" / "final_label_roberta_test.csv"),
-        help="Testing split CSV file for the RoBERTa-labeled path.",
-    )
-    parser.add_argument(
         "--label-column",
         default="roberta_label",
         help="Target label column to train on.",
@@ -46,7 +41,6 @@ def main() -> int:
     try:
         results = train_models(
             args.train_input,
-            args.test_input,
             text_column=args.text_column,
             label_column=args.label_column,
             random_state=args.random_state,
@@ -56,13 +50,10 @@ def main() -> int:
         print(f"Training failed: {exc}")
         return 1
 
-    print(f"Training completed. Metrics saved to {results['metrics_path']}")
+    print(f"Training completed. Models saved to {results['model_dir']}")
     print(f"Training summary saved to {results['summary_path']}")
-    for model_name, metrics in results["models"].items():
-        print(
-            f"{model_name}: accuracy={metrics['accuracy']:.4f}, "
-            f"f1_weighted={metrics['f1_weighted']:.4f}"
-        )
+    for model_name, model_info in results["models"].items():
+        print(f"{model_name}: saved to {model_info['model_path']}")
     return 0
 
 

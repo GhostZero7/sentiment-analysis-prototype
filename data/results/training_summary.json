@@ -1,132 +1,22 @@
 {
   "train_dataset_path": "data\\processed\\labeled\\training\\final_label_train.csv",
-  "test_dataset_path": "data\\processed\\labeled\\testing\\final_label_test.csv",
   "text_column": "processed_text",
   "label_column": "corrected_label",
   "random_state": 42,
   "artifact_subdir": "",
   "train_rows": 3308,
-  "test_rows": 827,
+  "model_dir": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models",
   "models": {
     "naive_bayes": {
-      "accuracy": 0.6517533252720678,
-      "precision_weighted": 0.6676038577092924,
-      "recall_weighted": 0.6517533252720678,
-      "f1_weighted": 0.6417530403500799,
-      "report": {
-        "negative": {
-          "precision": 0.7563025210084033,
-          "recall": 0.4017857142857143,
-          "f1-score": 0.5247813411078717,
-          "support": 224.0
-        },
-        "neutral": {
-          "precision": 0.6621621621621622,
-          "recall": 0.765625,
-          "f1-score": 0.7101449275362319,
-          "support": 320.0
-        },
-        "positive": {
-          "precision": 0.6035502958579881,
-          "recall": 0.7208480565371025,
-          "f1-score": 0.6570048309178744,
-          "support": 283.0
-        },
-        "accuracy": 0.6517533252720678,
-        "macro avg": {
-          "precision": 0.6740049930095179,
-          "recall": 0.6294195902742723,
-          "f1-score": 0.6306436998539927,
-          "support": 827.0
-        },
-        "weighted avg": {
-          "precision": 0.6676038577092924,
-          "recall": 0.6517533252720678,
-          "f1-score": 0.6417530403500799,
-          "support": 827.0
-        }
-      }
+      "model_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\naive_bayes.joblib"
     },
     "logistic_regression": {
-      "accuracy": 0.7061668681983071,
-      "precision_weighted": 0.7065329932170445,
-      "recall_weighted": 0.7061668681983071,
-      "f1_weighted": 0.7014080089958538,
-      "report": {
-        "negative": {
-          "precision": 0.7167630057803468,
-          "recall": 0.5535714285714286,
-          "f1-score": 0.6246851385390428,
-          "support": 224.0
-        },
-        "neutral": {
-          "precision": 0.708994708994709,
-          "recall": 0.8375,
-          "f1-score": 0.7679083094555874,
-          "support": 320.0
-        },
-        "positive": {
-          "precision": 0.6956521739130435,
-          "recall": 0.6784452296819788,
-          "f1-score": 0.6869409660107334,
-          "support": 283.0
-        },
-        "accuracy": 0.7061668681983071,
-        "macro avg": {
-          "precision": 0.7071366295626996,
-          "recall": 0.6898388860844692,
-          "f1-score": 0.6931781380017878,
-          "support": 827.0
-        },
-        "weighted avg": {
-          "precision": 0.7065329932170445,
-          "recall": 0.7061668681983071,
-          "f1-score": 0.7014080089958538,
-          "support": 827.0
-        }
-      }
+      "model_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\logistic_regression.joblib"
     },
     "svm": {
-      "accuracy": 0.7327690447400241,
-      "precision_weighted": 0.7319699124731948,
-      "recall_weighted": 0.7327690447400241,
-      "f1_weighted": 0.7312481534458133,
-      "report": {
-        "negative": {
-          "precision": 0.7241379310344828,
-          "recall": 0.65625,
-          "f1-score": 0.6885245901639344,
-          "support": 224.0
-        },
-        "neutral": {
-          "precision": 0.7457142857142857,
-          "recall": 0.815625,
-          "f1-score": 0.7791044776119403,
-          "support": 320.0
-        },
-        "positive": {
-          "precision": 0.7226277372262774,
-          "recall": 0.6996466431095406,
-          "f1-score": 0.7109515260323159,
-          "support": 283.0
-        },
-        "accuracy": 0.7327690447400241,
-        "macro avg": {
-          "precision": 0.7308266513250152,
-          "recall": 0.7238405477031802,
-          "f1-score": 0.7261935312693969,
-          "support": 827.0
-        },
-        "weighted avg": {
-          "precision": 0.7319699124731948,
-          "recall": 0.7327690447400241,
-          "f1-score": 0.7312481534458133,
-          "support": 827.0
-        }
-      }
+      "model_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\svm.joblib"
     }
   },
-  "metrics_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\results\\model_metrics.csv",
   "vectorizer_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\vectorizer.joblib",
   "failed_models": []
 }

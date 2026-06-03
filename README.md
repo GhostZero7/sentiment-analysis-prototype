@@ -57,12 +57,14 @@ Scripts are grouped by purpose:
 1. Use `scripts/models/vader/split_train_test.py` to create:
    - `data/processed/labeled/training/final_label_train.csv`
    - `data/processed/labeled/testing/final_label_test.csv`
-2. Train models:
+2. Train models on the 80% training split only:
    - `python scripts/models/vader/train_models.py`
-3. Evaluate models:
+3. Evaluate models on the 20% testing split:
    - `python scripts/models/vader/evaluate_models.py`
 4. Launch the dashboard:
    - `streamlit run src/dashboard/app.py`
+
+Training no longer prints accuracy/F1 because it does not touch the testing data. Run the evaluation script whenever you want the test results and confusion matrices.
 
 ## Optional RoBERTa Branch
 

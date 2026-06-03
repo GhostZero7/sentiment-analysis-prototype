@@ -7,7 +7,7 @@ This project trains classical sentiment models on the finalized labeled dataset:
 
 ## Training Flow
 
-1. Load the persisted train and test CSV files.
+1. Load the persisted training CSV file.
 2. Use `processed_text` as the input feature text.
 3. Use `corrected_label` as the target label when available.
 4. Fit a shared `TfidfVectorizer` on the training split.
@@ -15,8 +15,8 @@ This project trains classical sentiment models on the finalized labeled dataset:
    - Naive Bayes
    - Logistic Regression
    - Linear SVM
-6. Evaluate on the held-out test split.
-7. Save models and metrics to disk.
+6. Save models and the vectorizer to disk.
+7. Run the separate evaluation script when you want test metrics.
 
 The labeled files also now carry NRC emotion scores so the dataset retains both polarity and emotion features for analysis and future modeling.
 
@@ -53,6 +53,8 @@ python scripts/models/vader/split_train_test.py
 python scripts/models/vader/train_models.py
 ```
 
+This command trains only. It does not read the testing file and does not print accuracy or F1 scores.
+
 ## Prediction Command
 
 ```powershell
@@ -81,13 +83,13 @@ Training writes artifacts to:
 - `data/models/naive_bayes.joblib`
 - `data/models/logistic_regression.joblib`
 - `data/models/svm.joblib`
+- `data/results/training_summary.json`
 
 Evaluation outputs are written to:
 
-- `data/results/model_metrics.csv`
-- `data/results/training_summary.json`
 - `data/results/evaluation_summary.csv`
 - `data/results/classification_reports.json`
+- `data/results/confusion_matrices/*.png`
 
 ## Alternate RoBERTa-Labeled Path
 
@@ -119,3 +121,5 @@ python scripts/models/roberta/split_train_test.py
 python scripts/models/roberta/train_models.py
 python scripts/models/roberta/evaluate_models.py
 ```
+
+As with the VADER path, RoBERTa training only saves model artifacts. RoBERTa testing is done by `scripts/models/roberta/evaluate_models.py`.

@@ -24,8 +24,6 @@ try:
         RESULTS_DIR,
         build_vectorizer,
         ensure_directories,
-        evaluate_predictions,
-        fit_vectorizer,
         load_labeled_data,
         save_joblib,
         select_target_column,
@@ -38,8 +36,6 @@ except ImportError:  # pragma: no cover - direct script execution fallback
         RESULTS_DIR,
         build_vectorizer,
         ensure_directories,
-        evaluate_predictions,
-        fit_vectorizer,
         load_labeled_data,
         save_joblib,
         select_target_column,
@@ -50,17 +46,6 @@ def _json_default(value):
     if hasattr(value, "item"):
         return value.item()
     return str(value)
-
-
-def _safe_to_csv(frame: pd.DataFrame, output_path: Path, *, rerun_suffix: str) -> Path:
-    """Write a CSV, falling back to a rerun file if the target is locked."""
-    try:
-        frame.to_csv(output_path, index=False)
-        return output_path
-    except PermissionError:
-        fallback = output_path.with_name(f"{output_path.stem}_{rerun_suffix}{output_path.suffix}")
-        frame.to_csv(fallback, index=False)
-        return fallback
 
 
 def _safe_write_text(text: str, output_path: Path, *, rerun_suffix: str) -> Path:
@@ -74,58 +59,40 @@ def _safe_write_text(text: str, output_path: Path, *, rerun_suffix: str) -> Path
         return fallback
 
 
-def _score_model(model, x_test_vec) -> pd.Series:
-    predictions = model.predict(x_test_vec)
-    return pd.Series(predictions)
-
-
 def train_models(
     train_dataset_path: str | Path | None = None,
-    test_dataset_path: str | Path | None = None,
     *,
     text_column: str = DEFAULT_TEXT_COLUMN,
     label_column: str = DEFAULT_LABEL_COLUMN,
     random_state: int = 42,
     artifact_subdir: str = "",
 ) -> dict[str, object]:
-    """Train Naive Bayes, Logistic Regression, and SVM models."""
+    """Train Naive Bayes, Logistic Regression, and SVM models.
+
+    Evaluation is intentionally handled by scripts/models/*/evaluate_models.py
+    so training does not read or report on the held-out test split.
+    """
     model_output_dir = MODELS_DIR / artifact_subdir if artifact_subdir else MODELS_DIR
     results_output_dir = RESULTS_DIR / artifact_subdir if artifact_subdir else RESULTS_DIR
     ensure_directories(model_output_dir, results_output_dir)
     print(f"Loading training data from {train_dataset_path or Path('data/processed/labeled/training/final_label_train.csv')}")
-    print(f"Loading test data from {test_dataset_path or Path('data/processed/labeled/testing/final_label_test.csv')}")
     train_df = load_labeled_data(
         train_dataset_path,
         text_column=text_column,
         label_column=label_column,
     )
-    test_df = load_labeled_data(
-        test_dataset_path,
-        text_column=text_column,
-        label_column=label_column,
-    )
     target_column = select_target_column(train_df, preferred=label_column)
 
-    if len(train_df) < 10 or len(test_df) < 10:
-        raise ValueError("Train and test datasets must each contain at least 10 rows.")
+    if len(train_df) < 10:
+        raise ValueError("Training dataset must contain at least 10 rows.")
     if train_df[target_column].nunique() < 2:
         raise ValueError(f"Target column '{target_column}' must contain at least 2 classes.")
-    if target_column not in test_df.columns and "label" not in test_df.columns:
-        raise ValueError(f"Test dataset must contain a '{target_column}' or 'label' column.")
-
-    if target_column not in test_df.columns and "label" in test_df.columns:
-        test_df = test_df.copy()
-        test_df[target_column] = test_df["label"]
-    elif target_column not in train_df.columns and "label" in train_df.columns:
+    if target_column not in train_df.columns and "label" in train_df.columns:
         train_df = train_df.copy()
         train_df[target_column] = train_df["label"]
 
     vectorizer = build_vectorizer()
-    x_train_vec, x_test_vec = fit_vectorizer(
-        vectorizer,
-        train_df[text_column].astype(str),
-        test_df[text_column].astype(str),
-    )
+    x_train_vec = vectorizer.fit_transform(train_df[text_column].astype(str))
 
     models = {
         "naive_bayes": MultinomialNB(),
@@ -139,55 +106,34 @@ def train_models(
             if train_dataset_path is not None
             else Path("data/processed/labeled/training/final_label_train.csv")
         ),
-        "test_dataset_path": str(
-            Path(test_dataset_path)
-            if test_dataset_path is not None
-            else Path("data/processed/labeled/testing/final_label_test.csv")
-        ),
         "text_column": text_column,
         "label_column": target_column,
         "random_state": random_state,
         "artifact_subdir": artifact_subdir,
         "train_rows": int(len(train_df)),
-        "test_rows": int(len(test_df)),
+        "model_dir": str(model_output_dir),
         "models": {},
     }
 
-    save_joblib(vectorizer, model_output_dir / "vectorizer.joblib")
+    vectorizer_path = model_output_dir / "vectorizer.joblib"
+    save_joblib(vectorizer, vectorizer_path)
+    print(f"Saved vectorizer to {vectorizer_path}")
 
-    metrics_rows = []
     failed_models: list[dict[str, str]] = []
     model_total = len(models)
     for model_name, model in models.items():
         print(f"[{len(results['models']) + len(failed_models) + 1}/{model_total}] Training {model_name}...")
         try:
             fitted = model.fit(x_train_vec, train_df[target_column].astype(str))
-            y_pred = _score_model(fitted, x_test_vec)
-            metrics = evaluate_predictions(test_df[target_column].astype(str), y_pred)
-            results["models"][model_name] = metrics
-            metrics_rows.append(
-                {
-                    "model": model_name,
-                    "accuracy": metrics["accuracy"],
-                    "precision_weighted": metrics["precision_weighted"],
-                    "recall_weighted": metrics["recall_weighted"],
-                    "f1_weighted": metrics["f1_weighted"],
-                }
-            )
-            save_joblib(fitted, model_output_dir / f"{model_name}.joblib")
-            print(
-                f"Completed {model_name}: accuracy={metrics['accuracy']:.4f}, "
-                f"f1_weighted={metrics['f1_weighted']:.4f}"
-            )
+            model_path = model_output_dir / f"{model_name}.joblib"
+            save_joblib(fitted, model_path)
+            results["models"][model_name] = {"model_path": str(model_path)}
+            print(f"Saved {model_name} to {model_path}")
         except Exception as exc:
             failed_models.append({"model": model_name, "error": str(exc)})
             print(f"Failed {model_name}: {exc}")
 
-    metrics_df = pd.DataFrame(metrics_rows)
-    metrics_path = results_output_dir / "model_metrics.csv"
-    metrics_saved_to = _safe_to_csv(metrics_df, metrics_path, rerun_suffix="rerun")
-    results["metrics_path"] = str(metrics_saved_to)
-    results["vectorizer_path"] = str(model_output_dir / "vectorizer.joblib")
+    results["vectorizer_path"] = str(vectorizer_path)
     results["failed_models"] = failed_models
 
     summary_path = results_output_dir / "training_summary.json"
@@ -204,11 +150,6 @@ def main() -> int:
         "--train-input",
         default=str(Path("data") / "processed" / "labeled" / "training" / "final_label_train.csv"),
         help="Training split CSV file.",
-    )
-    parser.add_argument(
-        "--test-input",
-        default=str(Path("data") / "processed" / "labeled" / "testing" / "final_label_test.csv"),
-        help="Testing split CSV file.",
     )
     parser.add_argument(
         "--label-column",
@@ -231,7 +172,6 @@ def main() -> int:
     try:
         results = train_models(
             args.train_input,
-            args.test_input,
             text_column=args.text_column,
             label_column=args.label_column,
             random_state=args.random_state,
@@ -241,13 +181,10 @@ def main() -> int:
         print(f"Training failed: {exc}")
         return 1
 
-    print(f"Training completed. Metrics saved to {results['metrics_path']}")
+    print(f"Training completed. Models saved to {results['model_dir']}")
     print(f"Training summary saved to {results['summary_path']}")
-    for model_name, metrics in results["models"].items():
-        print(
-            f"{model_name}: accuracy={metrics['accuracy']:.4f}, "
-            f"f1_weighted={metrics['f1_weighted']:.4f}"
-        )
+    for model_name, model_info in results["models"].items():
+        print(f"{model_name}: saved to {model_info['model_path']}")
     return 0
 
 

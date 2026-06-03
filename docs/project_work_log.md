@@ -116,6 +116,13 @@ Train/test split outputs now live in dedicated folders:
 
 The training and evaluation scripts read from those folders by default.
 
+Training is now intentionally train-only:
+
+- `scripts/models/vader/train_models.py` reads the VADER training file and saves model artifacts.
+- `scripts/models/roberta/train_models.py` reads the RoBERTa-labeled training file and saves model artifacts.
+- evaluation/testing is handled separately by the matching `evaluate_models.py` scripts.
+- accuracy, F1, classification reports, and confusion matrices are generated only during evaluation.
+
 ## Repository State
 
 - Git repository initialized locally and connected to GitHub.

@@ -24,15 +24,17 @@ BRANCHES = {
         "results_dir": RESULTS_DIR,
         "models_dir": MODELS_DIR,
         "labeled_file": DATA_DIR / "processed" / "labeled" / "final_label.csv",
+        "test_file": DATA_DIR / "processed" / "labeled" / "testing" / "final_label_test.csv",
         "summary_file": "training_summary.json",
-        "metrics_files": ("model_metrics_rerun.csv", "model_metrics.csv"),
+        "metrics_files": ("evaluation_summary_rerun.csv", "evaluation_summary.csv"),
     },
     "RoBERTa-labeled branch": {
         "results_dir": RESULTS_DIR / "roberta",
         "models_dir": MODELS_DIR / "roberta",
         "labeled_file": DATA_DIR / "processed" / "labeled" / "final_label_roberta.csv",
+        "test_file": DATA_DIR / "processed" / "labeled" / "testing" / "final_label_roberta_test.csv",
         "summary_file": "training_summary.json",
-        "metrics_files": ("model_metrics_rerun.csv", "model_metrics.csv"),
+        "metrics_files": ("evaluation_summary_rerun.csv", "evaluation_summary.csv"),
     },
 }
 
@@ -69,6 +71,12 @@ def _load_labeled_data(branch_name: str) -> pd.DataFrame:
     if not labeled_file.is_file():
         return pd.DataFrame()
     return pd.read_csv(labeled_file)
+
+
+def _count_rows(path: Path) -> int | str:
+    if not path.is_file():
+        return "n/a"
+    return len(pd.read_csv(path))
 
 
 def _load_confusion_matrix_image(model_name: str, results_dir: Path):
@@ -108,11 +116,12 @@ def main() -> None:
     labeled_data = _load_labeled_data(branch_name)
     results_dir = Path(branch["results_dir"])
     models_dir = Path(branch["models_dir"])
+    test_file = Path(branch["test_file"])
 
     with st.sidebar:
         st.header("Dataset")
         st.write(f"Train rows: {summary.get('train_rows', 'n/a')}")
-        st.write(f"Test rows: {summary.get('test_rows', 'n/a')}")
+        st.write(f"Test rows: {_count_rows(test_file)}")
         st.write(f"Label column: {summary.get('label_column', 'corrected_label')}")
         st.write(f"Vectorizer: {summary.get('vectorizer_path', 'n/a')}")
         st.write(f"Model dir: {models_dir}")
@@ -124,7 +133,7 @@ def main() -> None:
     with col1:
         st.subheader("Model Metrics")
         if metrics.empty:
-            st.info("No metrics file found yet.")
+            st.info("No evaluation summary found yet. Run the matching evaluate_models.py script.")
         else:
             st.dataframe(metrics, use_container_width=True)
 
@@ -153,7 +162,7 @@ def main() -> None:
     with col2:
         st.subheader("Confusion Matrix")
         if metrics.empty:
-            st.info("Train the models first to generate confusion matrices.")
+            st.info("Run the matching evaluate_models.py script to generate confusion matrices.")
         else:
             model_names = metrics["model"].tolist() if "model" in metrics.columns else []
             selected_model = st.selectbox("Choose a model", model_names or ["naive_bayes", "logistic_regression", "svm"])
