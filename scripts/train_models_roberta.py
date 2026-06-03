@@ -17,12 +17,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Train models on RoBERTa labels.")
     parser.add_argument(
         "--train-input",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta_train.csv"),
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "training" / "final_label_roberta_train.csv"),
         help="Training split CSV file for the RoBERTa-labeled path.",
     )
     parser.add_argument(
         "--test-input",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta_test.csv"),
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "testing" / "final_label_roberta_test.csv"),
         help="Testing split CSV file for the RoBERTa-labeled path.",
     )
     parser.add_argument(

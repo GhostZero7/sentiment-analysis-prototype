@@ -12,7 +12,7 @@ from scripts.evaluate_models import evaluate_models
 
 def main() -> int:
     results = evaluate_models(
-        PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta_test.csv",
+        PROJECT_ROOT / "data" / "processed" / "labeled" / "testing" / "final_label_roberta_test.csv",
         label_column="roberta_label",
         models_dir=PROJECT_ROOT / "data" / "models" / "roberta",
         results_dir=PROJECT_ROOT / "data" / "results" / "roberta",

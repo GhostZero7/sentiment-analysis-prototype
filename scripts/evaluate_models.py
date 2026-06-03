@@ -126,7 +126,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate trained models on the held-out test split.")
     parser.add_argument(
         "--test-input",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_test.csv"),
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "testing" / "final_label_test.csv"),
         help="Testing split CSV file.",
     )
     parser.add_argument(

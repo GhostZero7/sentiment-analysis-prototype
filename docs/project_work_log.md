@@ -108,6 +108,13 @@ The scripts are now organized by purpose:
 
 The VADER labeling and model training steps now run row-by-row or model-by-model with progress messages and failure logs, so any problematic comments or model steps are visible during execution instead of failing silently.
 
+Train/test split outputs now live in dedicated folders:
+
+- `data/processed/labeled/training/` for the 80% training comments
+- `data/processed/labeled/testing/` for the 20% testing comments
+
+The training and evaluation scripts read from those folders by default.
+
 ## Repository State
 
 - Git repository initialized locally.

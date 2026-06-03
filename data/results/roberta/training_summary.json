@@ -1,6 +1,6 @@
 {
-  "train_dataset_path": "data\\processed\\labeled\\final_label_roberta_train.csv",
-  "test_dataset_path": "data\\processed\\labeled\\final_label_roberta_test.csv",
+  "train_dataset_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\processed\\labeled\\training\\final_label_roberta_train.csv",
+  "test_dataset_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\processed\\labeled\\testing\\final_label_roberta_test.csv",
   "text_column": "processed_text",
   "label_column": "roberta_label",
   "random_state": 42,
@@ -127,5 +127,6 @@
     }
   },
   "metrics_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\results\\roberta\\model_metrics.csv",
-  "vectorizer_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\roberta\\vectorizer.joblib"
+  "vectorizer_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\roberta\\vectorizer.joblib",
+  "failed_models": []
 }

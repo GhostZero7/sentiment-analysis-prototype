@@ -47,12 +47,12 @@ def main() -> int:
     )
     parser.add_argument(
         "--train-output",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta_train.csv"),
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "training" / "final_label_roberta_train.csv"),
         help="Output CSV path for the training split.",
     )
     parser.add_argument(
         "--test-output",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta_test.csv"),
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "testing" / "final_label_roberta_test.csv"),
         help="Output CSV path for the test split.",
     )
     args = parser.parse_args()
@@ -86,4 +86,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

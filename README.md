@@ -54,8 +54,8 @@ Scripts are grouped by purpose:
 - `scripts/models/roberta/`
 
 1. Use `scripts/models/vader/split_train_test.py` to create:
-   - `data/processed/labeled/final_label_train.csv`
-   - `data/processed/labeled/final_label_test.csv`
+   - `data/processed/labeled/training/final_label_train.csv`
+   - `data/processed/labeled/testing/final_label_test.csv`
 2. Train models:
    - `python scripts/models/vader/train_models.py`
 3. Evaluate models:

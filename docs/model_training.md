@@ -38,8 +38,8 @@ This writes:
 
 You can also persist the split as separate CSV files:
 
-- `data/processed/labeled/final_label_train.csv`
-- `data/processed/labeled/final_label_test.csv`
+- `data/processed/labeled/training/final_label_train.csv`
+- `data/processed/labeled/testing/final_label_test.csv`
 
 Create them with:
 
@@ -96,8 +96,8 @@ The VADER path remains the default. If you later produce a separate RoBERTa-labe
 Expected alternate files:
 
 - `data/processed/labeled/final_label_roberta.csv`
-- `data/processed/labeled/final_label_roberta_train.csv`
-- `data/processed/labeled/final_label_roberta_test.csv`
+- `data/processed/labeled/training/final_label_roberta_train.csv`
+- `data/processed/labeled/testing/final_label_roberta_test.csv`
 
 Helper scripts:
 

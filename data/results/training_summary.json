@@ -1,6 +1,6 @@
 {
-  "train_dataset_path": "data\\processed\\labeled\\final_label_train.csv",
-  "test_dataset_path": "data\\processed\\labeled\\final_label_test.csv",
+  "train_dataset_path": "data\\processed\\labeled\\training\\final_label_train.csv",
+  "test_dataset_path": "data\\processed\\labeled\\testing\\final_label_test.csv",
   "text_column": "processed_text",
   "label_column": "corrected_label",
   "random_state": 42,

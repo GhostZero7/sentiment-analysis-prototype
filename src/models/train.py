@@ -92,8 +92,8 @@ def train_models(
     model_output_dir = MODELS_DIR / artifact_subdir if artifact_subdir else MODELS_DIR
     results_output_dir = RESULTS_DIR / artifact_subdir if artifact_subdir else RESULTS_DIR
     ensure_directories(model_output_dir, results_output_dir)
-    print(f"Loading training data from {train_dataset_path or Path('data/processed/labeled/final_label_train.csv')}")
-    print(f"Loading test data from {test_dataset_path or Path('data/processed/labeled/final_label_test.csv')}")
+    print(f"Loading training data from {train_dataset_path or Path('data/processed/labeled/training/final_label_train.csv')}")
+    print(f"Loading test data from {test_dataset_path or Path('data/processed/labeled/testing/final_label_test.csv')}")
     train_df = load_labeled_data(
         train_dataset_path,
         text_column=text_column,
@@ -137,12 +137,12 @@ def train_models(
         "train_dataset_path": str(
             Path(train_dataset_path)
             if train_dataset_path is not None
-            else Path("data/processed/labeled/final_label_train.csv")
+            else Path("data/processed/labeled/training/final_label_train.csv")
         ),
         "test_dataset_path": str(
             Path(test_dataset_path)
             if test_dataset_path is not None
-            else Path("data/processed/labeled/final_label_test.csv")
+            else Path("data/processed/labeled/testing/final_label_test.csv")
         ),
         "text_column": text_column,
         "label_column": target_column,
@@ -202,12 +202,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Train baseline sentiment models.")
     parser.add_argument(
         "--train-input",
-        default=str(Path("data") / "processed" / "labeled" / "final_label_train.csv"),
+        default=str(Path("data") / "processed" / "labeled" / "training" / "final_label_train.csv"),
         help="Training split CSV file.",
     )
     parser.add_argument(
         "--test-input",
-        default=str(Path("data") / "processed" / "labeled" / "final_label_test.csv"),
+        default=str(Path("data") / "processed" / "labeled" / "testing" / "final_label_test.csv"),
         help="Testing split CSV file.",
     )
     parser.add_argument(
