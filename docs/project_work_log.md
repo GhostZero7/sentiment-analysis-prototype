@@ -40,7 +40,6 @@ The script:
 - `scripts/preprocessing/filter_relevance.py`
 
 It scores each final labeled comment using ZESCO/electricity/load-shedding/tariff/energy-service keywords and writes:
-- `data/processed/relevance/all_comments_relevance.csv`
 - `data/processed/relevance/relevant_comments.csv`
 - `data/processed/relevance/irrelevant_comments.csv`
 
@@ -50,12 +49,18 @@ Each row includes:
 - `relevance_reason`
 - `relevance_terms`
 
-These files are meant for manual monitoring first, so we can inspect false positives and false negatives before excluding comments from training.
+These files are kept for manual monitoring so we can inspect false positives and false negatives after each refinement.
 
 Current relevance review output:
 - total scored comments: 4,135
 - relevant comments: 2,813
 - irrelevant comments: 1,322
+
+Canonical relevance outputs:
+- `data/processed/labeled/final_label_relevant.csv`
+- `data/processed/labeled/final_label_irrelevant.csv`
+
+The model training scripts now use `final_label_relevant.csv` by default.
 
 ## Sentiment Labeling
 
@@ -76,9 +81,8 @@ The VADER correction layer now reads this CSV, supports slash-separated variants
 Important current rule:
 - `fyabupuba` and `ifyabupuba` are hard negative overrides.
 
-Saved sentiment outputs:
-- `data/processed/labeled/comments_labeled_vader.csv`
-- `data/processed/labeled/comments_labeled_vader_english_only.csv`
+Saved sentiment output:
+- `data/processed/labeled/final_label.csv`
 
 ## NRC Emotion Analysis
 
@@ -109,13 +113,10 @@ Detected sarcasm patterns include:
 - rhetorical questions plus laughter
 - faint praise plus complaint context
 
-Sarcasm-aware outputs:
-- `data/processed/labeled/comments_labeled_vader_sarcasm.csv`
-- `data/processed/labeled/comments_labeled_vader_sarcasm_english_only.csv`
-
 Canonical final outputs:
 - `data/processed/labeled/final_label.csv`
-- `data/processed/labeled/final_label_english_only.csv`
+- `data/processed/labeled/final_label_relevant.csv`
+- `data/processed/labeled/final_label_irrelevant.csv`
 
 These final files include:
 - `is_sarcastic`
@@ -129,8 +130,9 @@ These final files include:
 Current recommended flow:
 
 1. Preprocess cleaned comments.
-2. Run sarcasm detection.
-3. Run VADER labeling with sarcasm-aware overrides.
+2. Run VADER labeling with sarcasm-aware and local-lexicon overrides.
+3. Run relevance filtering to split relevant and irrelevant comments.
+4. Train models on relevant comments only.
 
 The scripts are now organized by purpose:
 
@@ -158,14 +160,19 @@ Training is now intentionally train-only:
 - evaluation/testing is handled separately by the matching `evaluate_models.py` scripts.
 - accuracy, F1, classification reports, and confusion matrices are generated only during evaluation.
 
-The VADER models were retrained after expanding the local lexicon.
+The VADER models were retrained after expanding the local lexicon and moving training to relevant-only comments.
 
-Latest VADER evaluation:
-- Naive Bayes accuracy: 0.6614
-- Logistic Regression accuracy: 0.7025
-- SVM accuracy: 0.7134
+Latest relevant-only VADER evaluation:
+- Naive Bayes accuracy: 0.5595
+- Logistic Regression accuracy: 0.6377
+- SVM accuracy: 0.6448
 
-The RoBERTa-labeled branch was refreshed from the updated final dataset and retrained/evaluated.
+The RoBERTa-labeled branch was refreshed from `final_label_relevant.csv` and retrained/evaluated.
+
+Latest relevant-only RoBERTa-branch evaluation:
+- Naive Bayes accuracy: 0.6661
+- Logistic Regression accuracy: 0.7229
+- SVM accuracy: 0.7123
 
 ## Repository State
 

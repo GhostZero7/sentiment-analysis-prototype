@@ -2,8 +2,15 @@
 
 This project trains classical sentiment models on the finalized labeled dataset:
 
+- `data/processed/labeled/final_label_relevant.csv`
+
+The full labeled corpus remains available at:
+
 - `data/processed/labeled/final_label.csv`
-- optional English-only variant: `data/processed/labeled/final_label_english_only.csv`
+
+The excluded review set is:
+
+- `data/processed/labeled/final_label_irrelevant.csv`
 
 ## Training Flow
 
@@ -97,7 +104,7 @@ The VADER path remains the default. If you later produce a separate RoBERTa-labe
 
 Expected alternate files:
 
-- `data/processed/labeled/final_label_roberta.csv`
+- `data/processed/labeled/final_label_roberta_relevant.csv`
 - `data/processed/labeled/training/final_label_roberta_train.csv`
 - `data/processed/labeled/testing/final_label_roberta_test.csv`
 

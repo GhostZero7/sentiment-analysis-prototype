@@ -19,13 +19,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Label the final dataset with RoBERTa sentiment predictions.")
     parser.add_argument(
         "--input",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label.csv"),
-        help="Input sarcasm-aware labeled CSV.",
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_relevant.csv"),
+        help="Input relevant-only sarcasm-aware labeled CSV.",
     )
     parser.add_argument(
         "--output",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta.csv"),
-        help="Output CSV with RoBERTa labels.",
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta_relevant.csv"),
+        help="Output relevant-only CSV with RoBERTa labels.",
     )
     parser.add_argument(
         "--text-column",

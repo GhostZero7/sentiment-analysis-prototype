@@ -18,10 +18,7 @@ from src.sentiment.vader_analyzer import get_vader_scores
 
 DEFAULT_INPUT = PROJECT_ROOT / "data" / "processed" / "cleaned" / "comments_stage2_emoji_stopword_lemma.csv"
 DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label.csv"
-DEFAULT_STRICT_INPUT = PROJECT_ROOT / "data" / "processed" / "cleaned" / "comments_stage2_strict_english.csv"
-DEFAULT_STRICT_OUTPUT = PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_english_only.csv"
 DEFAULT_FAILURES = PROJECT_ROOT / "data" / "results" / "label_failures" / "final_label_failures.csv"
-DEFAULT_STRICT_FAILURES = PROJECT_ROOT / "data" / "results" / "label_failures" / "final_label_english_only_failures.csv"
 
 
 def _safe_to_csv(frame: pd.DataFrame, output_path: Path, *, rerun_suffix: str) -> Path:
@@ -100,22 +97,11 @@ def _process_comment(text: str) -> tuple[dict[str, object], dict[str, object] | 
         }, failure
 
 
-def _resolve_io(english_only: bool) -> tuple[Path, Path, Path]:
-    if english_only:
-        return DEFAULT_STRICT_INPUT, DEFAULT_STRICT_OUTPUT, DEFAULT_STRICT_FAILURES
-    return DEFAULT_INPUT, DEFAULT_OUTPUT, DEFAULT_FAILURES
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Apply sarcasm detection before VADER sentiment labeling.")
-    parser.add_argument(
-        "--english-only",
-        action="store_true",
-        help="Use the strict-English stage 2 file as input.",
-    )
-    args = parser.parse_args()
+    parser.parse_args()
 
-    input_path, output_path, failures_path = _resolve_io(args.english_only)
+    input_path, output_path, failures_path = DEFAULT_INPUT, DEFAULT_OUTPUT, DEFAULT_FAILURES
     if not input_path.is_file():
         print(f"Input file not found: {input_path}")
         return 1

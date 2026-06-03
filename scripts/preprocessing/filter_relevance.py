@@ -18,6 +18,8 @@ from src.preprocessing.relevance import assess_relevance
 DEFAULT_INPUT = PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label.csv"
 DEFAULT_METADATA = PROJECT_ROOT / "data" / "processed" / "cleaned" / "comments_stage1_3plus_english.csv"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "processed" / "relevance"
+DEFAULT_RELEVANT_LABEL_OUTPUT = PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_relevant.csv"
+DEFAULT_IRRELEVANT_LABEL_OUTPUT = PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_irrelevant.csv"
 
 
 def _safe_to_csv(frame: pd.DataFrame, output_path: Path, *, rerun_suffix: str) -> Path:
@@ -55,7 +57,13 @@ def _comment_text_for_relevance(row: pd.Series) -> str:
     return " ".join(str(part) for part in parts if pd.notna(part))
 
 
-def split_relevance(input_path: Path, metadata_path: Path, output_dir: Path) -> dict[str, object]:
+def split_relevance(
+    input_path: Path,
+    metadata_path: Path,
+    output_dir: Path,
+    relevant_label_output: Path,
+    irrelevant_label_output: Path,
+) -> dict[str, object]:
     if not input_path.is_file():
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
@@ -82,17 +90,21 @@ def split_relevance(input_path: Path, metadata_path: Path, output_dir: Path) -> 
     irrelevant = review[~review["is_relevant"]].copy()
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    all_path = _safe_to_csv(review, output_dir / "all_comments_relevance.csv", rerun_suffix="rerun")
     relevant_path = _safe_to_csv(relevant, output_dir / "relevant_comments.csv", rerun_suffix="rerun")
     irrelevant_path = _safe_to_csv(irrelevant, output_dir / "irrelevant_comments.csv", rerun_suffix="rerun")
+    relevant_label_output.parent.mkdir(parents=True, exist_ok=True)
+    irrelevant_label_output.parent.mkdir(parents=True, exist_ok=True)
+    relevant_label_path = _safe_to_csv(relevant, relevant_label_output, rerun_suffix="rerun")
+    irrelevant_label_path = _safe_to_csv(irrelevant, irrelevant_label_output, rerun_suffix="rerun")
 
     return {
         "total_rows": int(len(review)),
         "relevant_rows": int(len(relevant)),
         "irrelevant_rows": int(len(irrelevant)),
-        "all_path": str(all_path),
         "relevant_path": str(relevant_path),
         "irrelevant_path": str(irrelevant_path),
+        "relevant_label_path": str(relevant_label_path),
+        "irrelevant_label_path": str(irrelevant_label_path),
         "reason_counts": review["relevance_reason"].value_counts().to_dict(),
     }
 
@@ -102,17 +114,34 @@ def main() -> int:
     parser.add_argument("--input", default=str(DEFAULT_INPUT), help="Final labeled CSV to score.")
     parser.add_argument("--metadata", default=str(DEFAULT_METADATA), help="Stage 1 cleaned CSV with readable text.")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Folder for relevance review files.")
+    parser.add_argument(
+        "--relevant-label-output",
+        default=str(DEFAULT_RELEVANT_LABEL_OUTPUT),
+        help="Canonical relevant-only labeled CSV used for training.",
+    )
+    parser.add_argument(
+        "--irrelevant-label-output",
+        default=str(DEFAULT_IRRELEVANT_LABEL_OUTPUT),
+        help="Canonical irrelevant labeled CSV kept for review.",
+    )
     args = parser.parse_args()
 
     try:
-        summary = split_relevance(Path(args.input), Path(args.metadata), Path(args.output_dir))
+        summary = split_relevance(
+            Path(args.input),
+            Path(args.metadata),
+            Path(args.output_dir),
+            Path(args.relevant_label_output),
+            Path(args.irrelevant_label_output),
+        )
     except Exception as exc:
         print(f"Relevance split failed: {exc}")
         return 1
 
-    print(f"Saved all relevance-scored comments to {summary['all_path']}")
     print(f"Saved relevant comments to {summary['relevant_path']} ({summary['relevant_rows']} rows)")
     print(f"Saved irrelevant comments to {summary['irrelevant_path']} ({summary['irrelevant_rows']} rows)")
+    print(f"Saved training-ready relevant labels to {summary['relevant_label_path']}")
+    print(f"Saved review-only irrelevant labels to {summary['irrelevant_label_path']}")
     print("Relevance reasons:")
     for reason, count in summary["reason_counts"].items():
         print(f"  {reason}: {count}")

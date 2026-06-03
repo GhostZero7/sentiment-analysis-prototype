@@ -23,7 +23,7 @@ BRANCHES = {
     "VADER baseline": {
         "results_dir": RESULTS_DIR,
         "models_dir": MODELS_DIR,
-        "labeled_file": DATA_DIR / "processed" / "labeled" / "final_label.csv",
+        "labeled_file": DATA_DIR / "processed" / "labeled" / "final_label_relevant.csv",
         "test_file": DATA_DIR / "processed" / "labeled" / "testing" / "final_label_test.csv",
         "summary_file": "training_summary.json",
         "metrics_files": ("evaluation_summary_rerun.csv", "evaluation_summary.csv"),
@@ -31,7 +31,7 @@ BRANCHES = {
     "RoBERTa-labeled branch": {
         "results_dir": RESULTS_DIR / "roberta",
         "models_dir": MODELS_DIR / "roberta",
-        "labeled_file": DATA_DIR / "processed" / "labeled" / "final_label_roberta.csv",
+        "labeled_file": DATA_DIR / "processed" / "labeled" / "final_label_roberta_relevant.csv",
         "test_file": DATA_DIR / "processed" / "labeled" / "testing" / "final_label_roberta_test.csv",
         "summary_file": "training_summary.json",
         "metrics_files": ("evaluation_summary_rerun.csv", "evaluation_summary.csv"),

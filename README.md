@@ -62,11 +62,16 @@ python scripts/preprocessing/filter_relevance.py
 
 This writes:
 
-- `data/processed/relevance/all_comments_relevance.csv`
 - `data/processed/relevance/relevant_comments.csv`
 - `data/processed/relevance/irrelevant_comments.csv`
 
-These files are for review first. Training still uses `final_label.csv` until the relevance filter has been inspected and approved.
+These files are kept for monitoring false positives and false negatives. The current approved training source is:
+
+- `data/processed/labeled/final_label_relevant.csv`
+
+The excluded review set is stored at:
+
+- `data/processed/labeled/final_label_irrelevant.csv`
 
 ## Current Training Flow
 
@@ -80,14 +85,15 @@ Scripts are grouped by purpose:
 - `scripts/models/roberta/`
 - `scripts/models/shared/` for shared evaluation helpers
 
-1. Use `scripts/models/vader/split_train_test.py` to create:
+1. Use `scripts/preprocessing/filter_relevance.py` to refresh the relevant/irrelevant labeled files.
+2. Use `scripts/models/vader/split_train_test.py` to split `final_label_relevant.csv` into:
    - `data/processed/labeled/training/final_label_train.csv`
    - `data/processed/labeled/testing/final_label_test.csv`
-2. Train models on the 80% training split only:
+3. Train models on the 80% relevant training split only:
    - `python scripts/models/vader/train_models.py`
-3. Evaluate models on the 20% testing split:
+4. Evaluate models on the 20% relevant testing split:
    - `python scripts/models/vader/evaluate_models.py`
-4. Launch the dashboard:
+5. Launch the dashboard:
    - `streamlit run src/dashboard/app.py`
 
 Training no longer prints accuracy/F1 because it does not touch the testing data. Run the evaluation script whenever you want the test results and confusion matrices.

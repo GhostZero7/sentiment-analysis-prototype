@@ -20,8 +20,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Split the RoBERTa-labeled dataset into train and test files.")
     parser.add_argument(
         "--input",
-        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta.csv"),
-        help="Input RoBERTa-labeled dataset.",
+        default=str(PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label_roberta_relevant.csv"),
+        help="Input relevant-only RoBERTa-labeled dataset.",
     )
     parser.add_argument(
         "--text-column",

@@ -4,7 +4,7 @@
   "label_column": "corrected_label",
   "random_state": 42,
   "artifact_subdir": "",
-  "train_rows": 3308,
+  "train_rows": 2250,
   "model_dir": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models",
   "models": {
     "naive_bayes": {
