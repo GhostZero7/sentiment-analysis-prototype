@@ -73,30 +73,38 @@ def evaluate_models(
 
     summary_rows = []
     reports = {}
-    for model_name, model in models.items():
-        y_pred = pd.Series(model.predict(x_test_vec))
-        metrics = evaluate_predictions(y_true, y_pred)
-        reports[model_name] = metrics["report"]
-        summary_rows.append(
-            {
-                "model": model_name,
-                "accuracy": metrics["accuracy"],
-                "precision_weighted": metrics["precision_weighted"],
-                "recall_weighted": metrics["recall_weighted"],
-                "f1_weighted": metrics["f1_weighted"],
-            }
-        )
+    failed_models: list[dict[str, str]] = []
+    model_total = len(models)
+    for index, (model_name, model) in enumerate(models.items(), start=1):
+        print(f"[{index}/{model_total}] Evaluating {model_name}...")
+        try:
+            y_pred = pd.Series(model.predict(x_test_vec))
+            metrics = evaluate_predictions(y_true, y_pred)
+            reports[model_name] = metrics["report"]
+            summary_rows.append(
+                {
+                    "model": model_name,
+                    "accuracy": metrics["accuracy"],
+                    "precision_weighted": metrics["precision_weighted"],
+                    "recall_weighted": metrics["recall_weighted"],
+                    "f1_weighted": metrics["f1_weighted"],
+                }
+            )
 
-        labels = sorted(set(y_true.unique()).union(set(y_pred.unique())))
-        cm = confusion_matrix(y_true, y_pred, labels=labels)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
-        fig, ax = plt.subplots(figsize=(7, 5))
-        disp.plot(ax=ax, cmap="Blues", colorbar=False, xticks_rotation=45)
-        ax.set_title(f"{model_name.replace('_', ' ').title()} Confusion Matrix")
-        fig.tight_layout()
-        fig_path = cm_dir / f"{model_name}.png"
-        fig.savefig(fig_path, dpi=200)
-        plt.close(fig)
+            labels = sorted(set(y_true.unique()).union(set(y_pred.unique())))
+            cm = confusion_matrix(y_true, y_pred, labels=labels)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+            fig, ax = plt.subplots(figsize=(7, 5))
+            disp.plot(ax=ax, cmap="Blues", colorbar=False, xticks_rotation=45)
+            ax.set_title(f"{model_name.replace('_', ' ').title()} Confusion Matrix")
+            fig.tight_layout()
+            fig_path = cm_dir / f"{model_name}.png"
+            fig.savefig(fig_path, dpi=200)
+            plt.close(fig)
+            print(f"Completed {model_name}: accuracy={metrics['accuracy']:.4f}, f1_weighted={metrics['f1_weighted']:.4f}")
+        except Exception as exc:
+            failed_models.append({"model": model_name, "error": str(exc)})
+            print(f"Failed {model_name}: {exc}")
 
     summary_df = pd.DataFrame(summary_rows)
     summary_path = results_root / "evaluation_summary.csv"
@@ -110,6 +118,7 @@ def evaluate_models(
         "reports_path": str(reports_saved_to),
         "confusion_matrix_dir": str(cm_dir),
         "summary": summary_rows,
+        "failed_models": failed_models,
     }
 
 

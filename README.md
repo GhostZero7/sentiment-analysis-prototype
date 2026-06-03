@@ -44,13 +44,20 @@ Output will be written to `data/raw/comments.csv` by default.
 
 ## Current Training Flow
 
-1. Use `scripts/split_train_test.py` to create:
+Scripts are grouped by purpose:
+
+- `scripts/collection/`
+- `scripts/preprocessing/`
+- `scripts/sentiment/`
+- `scripts/models/`
+
+1. Use `scripts/models/split_train_test.py` to create:
    - `data/processed/labeled/final_label_train.csv`
    - `data/processed/labeled/final_label_test.csv`
 2. Train models:
-   - `python scripts/train_models.py --train-input data/processed/labeled/final_label_train.csv --test-input data/processed/labeled/final_label_test.csv`
+   - `python scripts/models/train_models.py`
 3. Evaluate models:
-   - `python scripts/evaluate_models.py --test-input data/processed/labeled/final_label_test.csv`
+   - `python scripts/models/evaluate_models.py`
 4. Launch the dashboard:
    - `streamlit run src/dashboard/app.py`
 
@@ -59,8 +66,8 @@ Output will be written to `data/raw/comments.csv` by default.
 If you want to generate a separate RoBERTa-labeled dataset and train a second model branch without touching the VADER flow:
 
 ```powershell
-python scripts/label_roberta.py --input data/processed/labeled/final_label.csv --output data/processed/labeled/final_label_roberta.csv
-python scripts/split_train_test_roberta.py --input data/processed/labeled/final_label_roberta.csv
-python scripts/train_models_roberta.py --train-input data/processed/labeled/final_label_roberta_train.csv --test-input data/processed/labeled/final_label_roberta_test.csv
-python scripts/evaluate_models.py --test-input data/processed/labeled/final_label_roberta_test.csv --models-dir data/models/roberta --results-dir data/results/roberta --label-column roberta_label
+python scripts/sentiment/label_roberta.py
+python scripts/models/split_train_test_roberta.py
+python scripts/models/train_models_roberta.py
+python scripts/models/evaluate_models_roberta.py
 ```

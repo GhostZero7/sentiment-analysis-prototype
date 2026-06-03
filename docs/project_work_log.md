@@ -97,6 +97,15 @@ Current recommended flow:
 2. Run sarcasm detection.
 3. Run VADER labeling with sarcasm-aware overrides.
 
+The scripts are now organized by purpose:
+
+- `scripts/collection/`
+- `scripts/preprocessing/`
+- `scripts/sentiment/`
+- `scripts/models/`
+
+The VADER labeling and model training steps now run row-by-row or model-by-model with progress messages and failure logs, so any problematic comments or model steps are visible during execution instead of failing silently.
+
 ## Repository State
 
 - Git repository initialized locally.

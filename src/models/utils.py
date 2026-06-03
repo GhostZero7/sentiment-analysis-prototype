@@ -66,6 +66,8 @@ def load_labeled_data(
     df = df.copy()
     df[text_column] = df[text_column].fillna("").astype(str)
     df[label_column] = df[label_column].fillna("").astype(str)
+    if "analysis_failed" in df.columns:
+        df = df[~df["analysis_failed"].fillna(False).astype(bool)].copy()
     df = df[df[text_column].str.strip().ne("") & df[label_column].str.strip().ne("")].copy()
     return df
 

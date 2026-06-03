@@ -4,6 +4,7 @@
   "text_column": "processed_text",
   "label_column": "corrected_label",
   "random_state": 42,
+  "artifact_subdir": "",
   "train_rows": 3308,
   "test_rows": 827,
   "models": {
@@ -125,6 +126,7 @@
       }
     }
   },
-  "metrics_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\results\\model_metrics_rerun.csv",
-  "vectorizer_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\vectorizer.joblib"
+  "metrics_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\results\\model_metrics.csv",
+  "vectorizer_path": "C:\\Users\\Mulenga Musamba\\Documents\\sentiment-analysis-prototype\\data\\models\\vectorizer.joblib",
+  "failed_models": []
 }

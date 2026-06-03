@@ -92,6 +92,8 @@ def train_models(
     model_output_dir = MODELS_DIR / artifact_subdir if artifact_subdir else MODELS_DIR
     results_output_dir = RESULTS_DIR / artifact_subdir if artifact_subdir else RESULTS_DIR
     ensure_directories(model_output_dir, results_output_dir)
+    print(f"Loading training data from {train_dataset_path or Path('data/processed/labeled/final_label_train.csv')}")
+    print(f"Loading test data from {test_dataset_path or Path('data/processed/labeled/final_label_test.csv')}")
     train_df = load_labeled_data(
         train_dataset_path,
         text_column=text_column,
@@ -154,31 +156,45 @@ def train_models(
     save_joblib(vectorizer, model_output_dir / "vectorizer.joblib")
 
     metrics_rows = []
+    failed_models: list[dict[str, str]] = []
+    model_total = len(models)
     for model_name, model in models.items():
-        fitted = model.fit(x_train_vec, train_df[target_column].astype(str))
-        y_pred = _score_model(fitted, x_test_vec)
-        metrics = evaluate_predictions(test_df[target_column].astype(str), y_pred)
-        results["models"][model_name] = metrics
-        metrics_rows.append(
-            {
-                "model": model_name,
-                "accuracy": metrics["accuracy"],
-                "precision_weighted": metrics["precision_weighted"],
-                "recall_weighted": metrics["recall_weighted"],
-                "f1_weighted": metrics["f1_weighted"],
-            }
-        )
-        save_joblib(fitted, model_output_dir / f"{model_name}.joblib")
+        print(f"[{len(results['models']) + len(failed_models) + 1}/{model_total}] Training {model_name}...")
+        try:
+            fitted = model.fit(x_train_vec, train_df[target_column].astype(str))
+            y_pred = _score_model(fitted, x_test_vec)
+            metrics = evaluate_predictions(test_df[target_column].astype(str), y_pred)
+            results["models"][model_name] = metrics
+            metrics_rows.append(
+                {
+                    "model": model_name,
+                    "accuracy": metrics["accuracy"],
+                    "precision_weighted": metrics["precision_weighted"],
+                    "recall_weighted": metrics["recall_weighted"],
+                    "f1_weighted": metrics["f1_weighted"],
+                }
+            )
+            save_joblib(fitted, model_output_dir / f"{model_name}.joblib")
+            print(
+                f"Completed {model_name}: accuracy={metrics['accuracy']:.4f}, "
+                f"f1_weighted={metrics['f1_weighted']:.4f}"
+            )
+        except Exception as exc:
+            failed_models.append({"model": model_name, "error": str(exc)})
+            print(f"Failed {model_name}: {exc}")
 
     metrics_df = pd.DataFrame(metrics_rows)
     metrics_path = results_output_dir / "model_metrics.csv"
     metrics_saved_to = _safe_to_csv(metrics_df, metrics_path, rerun_suffix="rerun")
     results["metrics_path"] = str(metrics_saved_to)
     results["vectorizer_path"] = str(model_output_dir / "vectorizer.joblib")
+    results["failed_models"] = failed_models
 
     summary_path = results_output_dir / "training_summary.json"
     summary_saved_to = _safe_write_text(json.dumps(results, indent=2, default=_json_default), summary_path, rerun_suffix="rerun")
     results["summary_path"] = str(summary_saved_to)
+    if failed_models:
+        print("Models that failed to train:\n" + pd.DataFrame(failed_models).to_string(index=False))
     return results
 
 
