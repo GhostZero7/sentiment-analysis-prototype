@@ -52,6 +52,22 @@ def _fallback_nrc_result() -> dict[str, object]:
     return {
         "nrc_token_count": 0,
         "nrc_matched_token_count": 0,
+        "nrc_base_anger": 0.0,
+        "nrc_base_anticipation": 0.0,
+        "nrc_base_fear": 0.0,
+        "nrc_base_trust": 0.0,
+        "nrc_base_sadness": 0.0,
+        "nrc_base_hope": 0.0,
+        "nrc_base_frustration": 0.0,
+        "local_emotion_applied": False,
+        "local_emotion_terms": "",
+        "local_emotion_match_count": 0,
+        "local_anger_score": 0.0,
+        "local_fear_score": 0.0,
+        "local_trust_score": 0.0,
+        "local_hope_score": 0.0,
+        "local_sadness_score": 0.0,
+        "local_frustration_score": 0.0,
         "nrc_anger": 0.0,
         "nrc_anticipation": 0.0,
         "nrc_fear": 0.0,
@@ -72,7 +88,7 @@ def _process_comment(text: str) -> tuple[dict[str, object], dict[str, object] | 
             sarcastic = False
 
         vader_scores = get_vader_scores(text)
-        nrc_scores = get_nrc_scores(text)
+        nrc_scores = get_nrc_scores(text, is_sarcastic=sarcastic)
         row = {
             "is_sarcastic": sarcastic,
             **vader_scores,

@@ -86,7 +86,7 @@ Saved sentiment output:
 
 ## NRC Emotion Analysis
 
-We added NRC emotion scoring to match the system design and methodology chapters.
+We added combined NRC and local Zambian emotion scoring to match the system design and methodology chapters.
 
 The NRC layer now extracts normalized emotion scores for:
 - anger
@@ -95,11 +95,33 @@ The NRC layer now extracts normalized emotion scores for:
 - trust
 - sadness
 
-We also derive project-specific values for:
+We derive project-specific NRC base values for:
 - hope, mapped from anticipation
 - frustration, mapped from anger and sadness
 
-These emotion scores are appended to the labeled datasets alongside VADER sentiment so the final data includes both polarity and emotion features.
+The local emotion lexicon is stored at:
+- `data/lexicons/local_emotion_lexicon.csv`
+
+It contains 151 valid entries with weights from 0.0 to 1.0 for anger, fear, trust, hope, sadness, and frustration. Slash-separated variants and phrases are supported, and longer phrases are matched first to prevent overlap.
+
+Combined scoring:
+1. Calculate normalized NRC base scores.
+2. Average local weights across matched non-overlapping terms.
+3. Add local scores to the corresponding NRC base scores.
+4. Cap each combined score at 1.0.
+5. Suppress local hope and trust when sarcasm is detected.
+
+Explainability columns include:
+- `nrc_base_*`
+- `local_emotion_applied`
+- `local_emotion_terms`
+- `local_emotion_match_count`
+- `local_*_score`
+
+Current relevant-dataset coverage:
+- 386 of 2,813 relevant comments contain at least one local emotion match.
+
+The weights are manually assigned research heuristics. They should be reviewed against manually annotated comments and refined as the corpus grows.
 
 ## Sarcasm Detection
 

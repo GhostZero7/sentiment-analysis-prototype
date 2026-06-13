@@ -87,7 +87,6 @@ def _load_confusion_matrix_image(model_name: str, results_dir: Path):
 def _emotion_summary(frame: pd.DataFrame) -> pd.DataFrame:
     emotion_columns = [
         "nrc_anger",
-        "nrc_anticipation",
         "nrc_fear",
         "nrc_trust",
         "nrc_sadness",
@@ -137,7 +136,7 @@ def main() -> None:
         else:
             st.dataframe(metrics, use_container_width=True)
 
-        st.subheader("Emotion Index")
+        st.subheader("Combined NRC + Local Emotion Index")
         emotion_summary = _emotion_summary(labeled_data)
         if emotion_summary.empty:
             st.info("No NRC emotion columns found for this branch.")

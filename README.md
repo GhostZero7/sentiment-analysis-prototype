@@ -52,6 +52,16 @@ The local sentiment lexicon is stored at:
 
 It contains Zambian/code-switched terms, meanings, sentiment type, weights, and notes. The VADER analyzer loads this CSV during labeling and records matched terms in `local_correction_terms`, making the correction layer explainable.
 
+## Local Emotion Lexicon
+
+The NRC emotion analyzer is supplemented by:
+
+- `data/lexicons/local_emotion_lexicon.csv`
+
+The file maps local words, slash-separated variants, and phrases to weights for anger, fear, trust, hope, sadness, and frustration. Standard NRC scores are calculated first. Local scores are averaged across matched non-overlapping terms, added to NRC scores, and capped at `1.0`.
+
+The final `nrc_*` columns contain the combined values. Raw NRC values remain available in `nrc_base_*`, while `local_*_score` and `local_emotion_terms` explain the local contribution. For sarcastic comments, local hope and trust contributions are suppressed.
+
 ## Relevance Review
 
 Create files for manually checking whether comments are actually about ZESCO, electricity, load shedding, tariffs, or energy-service experience:
