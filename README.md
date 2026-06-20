@@ -108,6 +108,25 @@ Scripts are grouped by purpose:
 
 Training no longer prints accuracy/F1 because it does not touch the testing data. Run the evaluation script whenever you want the test results and confusion matrices.
 
+## Live URL Analysis
+
+The dashboard can now fetch and analyze a public Facebook post URL:
+
+```powershell
+streamlit run src/dashboard/app.py
+```
+
+In the dashboard, paste a Facebook URL, choose a fetch limit, and click **Fetch, analyze, and save URL**.
+
+Each run saves:
+
+- raw fetched comments in `data/raw/url_fetches/`
+- one analyzed CSV in `data/results/url_analyses/`
+- cumulative analyzed history in `data/processed/labeled/url_analysis_history.csv`
+- cumulative relevant training candidates in `data/processed/labeled/url_training_candidates.csv`
+
+The cumulative training-candidate file is deduplicated by URL, comment ID, and processed text, so repeated analysis of the same link will not duplicate the same rows.
+
 ## Optional RoBERTa Branch
 
 If you want to generate a separate RoBERTa-labeled dataset and train a second model branch without touching the VADER flow:

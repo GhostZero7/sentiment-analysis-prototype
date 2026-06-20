@@ -8,11 +8,13 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.dashboard.live_analysis import analyze_facebook_url
 from src.models.predict import predict_texts
 
 
@@ -100,10 +102,29 @@ def _emotion_summary(frame: pd.DataFrame) -> pd.DataFrame:
     return summary.rename_axis("emotion").reset_index(name="average_score")
 
 
+def _prediction_consensus(frame: pd.DataFrame) -> pd.DataFrame:
+    prediction_columns = [column for column in frame.columns if column.endswith("_prediction")]
+    if not prediction_columns:
+        return pd.DataFrame()
+    rows = []
+    for column in prediction_columns:
+        rows.append(
+            {
+                "model": column.replace("_prediction", ""),
+                "top_prediction": frame[column].mode().iloc[0] if not frame[column].mode().empty else "n/a",
+                "positive": int(frame[column].eq("positive").sum()),
+                "neutral": int(frame[column].eq("neutral").sum()),
+                "negative": int(frame[column].eq("negative").sum()),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
+    load_dotenv(PROJECT_ROOT / ".env")
     st.set_page_config(page_title="ZESCO Sentiment Prototype", layout="wide")
     st.title("ZESCO Sentiment Analysis Prototype")
-    st.caption("Baseline models trained on the final sarcasm-aware dataset.")
+    st.caption("Analyze saved datasets or fetch and analyze a public Facebook post URL.")
 
     with st.sidebar:
         st.header("Analysis Branch")
@@ -130,6 +151,81 @@ def main() -> None:
     col1, col2 = st.columns([1.1, 0.9])
 
     with col1:
+        st.subheader("Analyze Facebook URL")
+        facebook_url = st.text_input("Paste a public Facebook post/comment URL")
+        max_comments = st.number_input("Maximum comments to fetch", min_value=10, max_value=5000, value=500, step=50)
+        if st.button("Fetch, analyze, and save URL"):
+            if not facebook_url.strip():
+                st.warning("Paste a Facebook URL first.")
+            else:
+                with st.spinner("Fetching comments with Apify, analyzing text, and saving results..."):
+                    try:
+                        live_results, save_summary = analyze_facebook_url(
+                            facebook_url.strip(),
+                            models_dir=models_dir,
+                            max_comments=int(max_comments),
+                        )
+                        st.session_state["latest_live_results"] = live_results
+                        st.session_state["latest_live_summary"] = save_summary
+                    except Exception as exc:
+                        st.error(f"URL analysis failed: {exc}")
+
+        latest_live_results = st.session_state.get("latest_live_results")
+        latest_live_summary = st.session_state.get("latest_live_summary")
+        if isinstance(latest_live_results, pd.DataFrame) and latest_live_summary:
+            st.success(
+                f"Fetched {latest_live_summary['fetched_rows']} comments; "
+                f"analyzed {latest_live_summary['analyzed_rows']}; "
+                f"relevant {latest_live_summary['relevant_rows']}."
+            )
+            metric_cols = st.columns(4)
+            metric_cols[0].metric("Fetched", latest_live_summary["fetched_rows"])
+            metric_cols[1].metric("Analyzed", latest_live_summary["analyzed_rows"])
+            metric_cols[2].metric("Relevant", latest_live_summary["relevant_rows"])
+            metric_cols[3].metric("Cumulative candidates", latest_live_summary["training_candidate_rows"])
+            st.write(f"Saved analysis file: `{latest_live_summary['single_analysis_path']}`")
+            st.write(f"Raw fetched comments: `{latest_live_summary['raw_fetch_path']}`")
+            st.write(f"Cumulative history: `{latest_live_summary['history_path']}`")
+            st.write(f"Future training candidates: `{latest_live_summary['training_candidates_path']}`")
+
+            if "corrected_label" in latest_live_results.columns:
+                st.write("VADER/local/sarcasm label counts")
+                st.bar_chart(latest_live_results["corrected_label"].value_counts())
+
+            live_emotions = _emotion_summary(latest_live_results)
+            if not live_emotions.empty:
+                st.write("Live URL emotion index")
+                st.bar_chart(live_emotions.set_index("emotion")[["average_score"]])
+
+            consensus = _prediction_consensus(latest_live_results)
+            if not consensus.empty:
+                st.write("Model prediction counts")
+                st.dataframe(consensus, use_container_width=True)
+
+            preview_columns = [
+                column
+                for column in [
+                    "comment_id",
+                    "text_raw",
+                    "processed_text",
+                    "is_relevant",
+                    "corrected_label",
+                    "is_sarcastic",
+                    "local_emotion_terms",
+                    "naive_bayes_prediction",
+                    "logistic_regression_prediction",
+                    "svm_prediction",
+                ]
+                if column in latest_live_results.columns
+            ]
+            st.dataframe(latest_live_results[preview_columns].head(50), use_container_width=True)
+            st.download_button(
+                "Download latest analyzed URL CSV",
+                data=latest_live_results.to_csv(index=False).encode("utf-8"),
+                file_name="latest_url_analysis.csv",
+                mime="text/csv",
+            )
+
         st.subheader("Model Metrics")
         if metrics.empty:
             st.info("No evaluation summary found yet. Run the matching evaluate_models.py script.")

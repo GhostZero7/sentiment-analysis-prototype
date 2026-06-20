@@ -156,6 +156,21 @@ Current recommended flow:
 3. Run relevance filtering to split relevant and irrelevant comments.
 4. Train models on relevant comments only.
 
+## Live Dashboard URL Analysis
+
+The dashboard now supports the on-demand link workflow:
+
+1. User pastes a public Facebook post URL.
+2. Apify fetches comments up to the selected limit.
+3. Raw comments are saved in `data/raw/url_fetches/`.
+4. Comments are cleaned with the same preprocessing rules.
+5. Relevance, sarcasm, VADER/local sentiment, NRC/local emotions, and model predictions are applied.
+6. One per-link analyzed CSV is saved in `data/results/url_analyses/`.
+7. Cumulative analyzed rows are appended to `data/processed/labeled/url_analysis_history.csv`.
+8. Cumulative relevant rows are appended to `data/processed/labeled/url_training_candidates.csv`.
+
+The cumulative files are deduplicated by URL, comment ID, and processed text. These saved rows are intended as the next pool for reviewing and expanding the training set.
+
 The scripts are now organized by purpose:
 
 - `scripts/collection/`
