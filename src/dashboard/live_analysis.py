@@ -21,6 +21,7 @@ from src.sentiment.vader_analyzer import get_vader_scores
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 LIVE_RAW_DIR = DATA_DIR / "raw" / "url_fetches"
+LIVE_LINKS_PATH = DATA_DIR / "raw" / "url_links.csv"
 LIVE_RESULTS_DIR = DATA_DIR / "results" / "url_analyses"
 LIVE_LABELED_DIR = DATA_DIR / "processed" / "labeled"
 LIVE_HISTORY_PATH = LIVE_LABELED_DIR / "url_analysis_history.csv"
@@ -53,6 +54,25 @@ def _append_deduped(frame: pd.DataFrame, output_path: Path) -> pd.DataFrame:
         for column in key_columns:
             combined[column] = combined[column].fillna("").astype(str)
         combined = combined.drop_duplicates(subset=key_columns, keep="last")
+    combined.to_csv(output_path, index=False)
+    return combined
+
+
+def _save_link_record(record: dict[str, Any]) -> pd.DataFrame:
+    """Save a deduped registry of Facebook URLs analyzed through the dashboard."""
+    output_path = LIVE_LINKS_PATH
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    new_row = pd.DataFrame([record])
+    if output_path.is_file():
+        existing = pd.read_csv(output_path)
+        if "source_url" in existing.columns:
+            existing["source_url"] = existing["source_url"].fillna("").astype(str)
+        combined = pd.concat([existing, new_row], ignore_index=True)
+    else:
+        combined = new_row
+
+    combined["source_url"] = combined["source_url"].fillna("").astype(str)
+    combined = combined.sort_values("last_analyzed_at").drop_duplicates(subset=["source_url"], keep="last")
     combined.to_csv(output_path, index=False)
     return combined
 
@@ -181,4 +201,20 @@ def analyze_facebook_url(
     save_summary["fetched_rows"] = len(comments)
     save_summary["analyzed_rows"] = int(len(analyzed))
     save_summary["relevant_rows"] = int(analyzed["is_relevant"].fillna(False).sum()) if not analyzed.empty else 0
+    link_registry = _save_link_record(
+        {
+            "source_url": url,
+            "url_hash": _url_hash(url),
+            "last_analyzed_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_rows": save_summary["fetched_rows"],
+            "analyzed_rows": save_summary["analyzed_rows"],
+            "relevant_rows": save_summary["relevant_rows"],
+            "raw_fetch_path": raw_path,
+            "single_analysis_path": save_summary["single_analysis_path"],
+            "history_path": save_summary["history_path"],
+            "training_candidates_path": save_summary["training_candidates_path"],
+        }
+    )
+    save_summary["links_path"] = str(LIVE_LINKS_PATH)
+    save_summary["saved_link_rows"] = int(len(link_registry))
     return analyzed, save_summary

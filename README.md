@@ -120,6 +120,7 @@ In the dashboard, paste a Facebook URL, choose a fetch limit, and click **Fetch,
 
 Each run saves:
 
+- analyzed link registry in `data/raw/url_links.csv`
 - raw fetched comments in `data/raw/url_fetches/`
 - one analyzed CSV in `data/results/url_analyses/`
 - cumulative analyzed history in `data/processed/labeled/url_analysis_history.csv`

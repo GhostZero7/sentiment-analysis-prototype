@@ -185,6 +185,7 @@ def main() -> None:
             metric_cols[3].metric("Cumulative candidates", latest_live_summary["training_candidate_rows"])
             st.write(f"Saved analysis file: `{latest_live_summary['single_analysis_path']}`")
             st.write(f"Raw fetched comments: `{latest_live_summary['raw_fetch_path']}`")
+            st.write(f"Saved link registry: `{latest_live_summary['links_path']}`")
             st.write(f"Cumulative history: `{latest_live_summary['history_path']}`")
             st.write(f"Future training candidates: `{latest_live_summary['training_candidates_path']}`")
 
