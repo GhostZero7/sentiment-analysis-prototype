@@ -7,4 +7,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 logs/
+htmlcov/
+.coverage
+.coverage.*
+.ipynb_checkpoints/
+*.log
 data/processed/relevance/all_comments_relevance*.csv

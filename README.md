@@ -15,6 +15,12 @@ This prototype now includes:
 - an alternate RoBERTa-labeled training branch
 - a Streamlit dashboard for metrics and live predictions
 
+Project status and planning docs:
+
+- `docs/project_work_log.md` records the completed work and current pipeline state.
+- `docs/supervisor_briefing.md` summarizes the flow for supervisor review.
+- `docs/recommended_features.md` lists practical next features and their priority order.
+
 ## Step 1 Implemented: Apify Data Collection
 
 This stage includes Facebook URL validation and comment collection through Apify.
