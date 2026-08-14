@@ -1,161 +1,106 @@
-# Recommended Next Features
+# Product Direction and Future Features
 
-This document lists practical next features for improving the sentiment analysis prototype after the current end-to-end pipeline.
+The prototype is currently focused on an end-user dashboard for policy analysts and
+energy communicators. Model training, annotation, and diagnostic tools belong to a
+separate future developer/admin workflow.
 
-## 1. Manual Annotation Review Set
+## Implemented End-User Features
 
-Create a small manually reviewed dataset of comments with human-approved labels for:
+### Trend Analysis
 
-- Relevance
-- Sentiment
-- Sarcasm
-- Main emotion
+The dashboard groups comment timestamps by day, week, or month and shows:
 
-Why it matters:
+- positive, neutral, and negative sentiment movement;
+- comment volume;
+- anger, frustration, hope, and trust movement;
+- sarcasm frequency;
+- a plain-language description of the negative-sentiment direction.
 
-- Gives the project a stronger evaluation baseline.
-- Helps validate whether VADER, RoBERTa labels, sarcasm rules, and local lexicons match human judgment.
-- Makes supervisor/examiner discussions stronger because results can be compared against a human-labeled reference set.
+The dashboard states when only one time period is available because a snapshot is not
+enough to establish a trend.
 
-Suggested first version:
+### Topic Grouping
 
-- 200 to 500 comments.
-- Mix of clearly negative, neutral, positive, sarcastic, and code-switched comments.
-- Store as `data/processed/annotation/manual_review_sample.csv`.
+Comments receive one primary topic from a transparent Zambia-energy taxonomy:
 
-## 2. Annotation Dashboard
+- load shedding and reliability;
+- tariffs and affordability;
+- renewable energy and solar;
+- customer service and communication;
+- faults, connections, and infrastructure;
+- governance and public trust;
+- jobs and economic impact;
+- environment and climate;
+- other energy concerns.
 
-Add a simple Streamlit page for reviewing and correcting labels.
+Each topic includes volume, share of discussion, sentiment distribution, leading
+emotion, and representative comments. The taxonomy is deliberately auditable and can
+be refined when new local expressions appear.
 
-Useful fields:
+### Stakeholder Report
 
-- Original comment
-- Cleaned comment
-- Current predicted sentiment
-- Corrected sentiment dropdown
-- Sarcasm checkbox
-- Relevance checkbox
-- Emotion dropdown
-- Notes field
+The dashboard generates a downloadable Markdown report containing:
 
-Why it matters:
+- analysis scope and coverage;
+- executive summary;
+- sentiment distribution;
+- dominant topics;
+- emotion index;
+- trend interpretation;
+- evidence-linked policy and communication considerations;
+- interpretation limits.
 
-- Turns model improvement into a repeatable workflow.
-- Lets reviewed live URL analysis rows become approved training data.
-- Reduces the need to edit CSV files manually.
+### Policy and Communication Considerations
 
-## 3. Training Candidate Promotion
+Recommendations are generated from aggregated evidence. Every recommendation includes
+the topic volume, discussion share, negative-sentiment percentage, and frustration
+index when available.
 
-Add a controlled process for promoting rows from `url_training_candidates.csv` into the main training dataset.
+These outputs are decision-support considerations. They do not automatically prescribe
+policy, and the report states that Facebook comments are not a representative population
+survey.
 
-Suggested flow:
+## Future End-User Features
 
-1. Fetch and analyze a Facebook URL.
-2. Save relevant rows to training candidates.
-3. Manually review candidate labels.
-4. Promote approved rows into the training dataset.
-5. Retrain and compare model metrics.
+1. Add an energy-event timeline so trend changes can be compared with tariff decisions,
+   load-shedding announcements, renewable-energy launches, and regulatory changes.
+2. Add PDF export for formal stakeholder circulation while keeping the Markdown report
+   as the transparent source format.
+3. Add comparison across multiple Facebook posts, institutions, or monitoring periods.
+4. Add saved report snapshots so analysts can compare one monitoring cycle with another.
+5. Add configurable alert thresholds for rapid increases in negative sentiment,
+   frustration, or a high-priority topic.
 
-Why it matters:
+## Future Developer/Admin Features
 
-- Keeps the model improving as new public discussions are analyzed.
-- Prevents noisy auto-labeled rows from entering the training set without review.
+### Manual Annotation Review Set
 
-## 4. Model Comparison Page
+Create a human-reviewed sample of 200 to 500 comments covering relevance, sentiment,
+sarcasm, and main emotion. This will provide a stronger evaluation baseline.
 
-Add a dashboard page comparing VADER-based and RoBERTa-labeled branches.
+### Annotation Dashboard
 
-Include:
+Create a separate admin interface for correcting automated labels and adding review
+notes. This interface must not appear in the end-user dashboard.
 
-- Accuracy
-- F1 score
-- Confusion matrices
-- Class distribution
-- Example disagreements
+### Training Candidate Promotion
 
-Why it matters:
+Allow reviewed rows from `url_training_candidates.csv` to be approved before they enter
+the main training dataset.
 
-- The RoBERTa branch currently performs better, but the VADER branch is more explainable.
-- A comparison page makes the tradeoff visible.
+### Error and Model Comparison Tools
 
-## 5. Error Analysis Report
+Add developer reports for misclassified comments, model disagreements, confusion
+matrices, and comparison of the VADER-based and RoBERTa-labeled branches.
 
-Generate an error-analysis CSV or dashboard section showing misclassified test comments.
+### Lexicon Review Tools
 
-Useful columns:
+Show which local sentiment and emotion terms are frequently matched, change labels, or
+have no current examples. This will support evidence-based refinement of the local
+lexicons.
 
-- Original comment
-- True label
-- Predicted label
-- Sarcasm flag
-- Local sentiment terms
-- Local emotion terms
-- Relevance score
+## Priority
 
-Why it matters:
-
-- Makes model weaknesses easier to inspect.
-- Helps identify missing local lexicon terms and weak sarcasm patterns.
-
-## 6. Lexicon Review Tools
-
-Add a small report showing how often local sentiment and emotion terms are used.
-
-Include:
-
-- Most frequent matched local terms
-- Terms linked to label changes
-- Terms linked to sarcasm cases
-- Terms with no current matches
-
-Why it matters:
-
-- Helps refine the local lexicons using evidence from the dataset.
-- Makes it easier to justify the local-language adaptation in the methodology.
-
-## 7. Trend Analysis Over Time
-
-Use collection timestamps or post dates to show sentiment and emotion trends over time.
-
-Possible views:
-
-- Negative sentiment trend
-- Frustration trend
-- Sarcasm frequency trend
-- Topic/relevance volume trend
-
-Why it matters:
-
-- Moves the project from static classification toward monitoring public sentiment.
-- Useful for demonstrating how the system could support service-feedback tracking.
-
-## 8. Topic Clustering
-
-Add topic grouping for relevant comments.
-
-Possible topic groups:
-
-- Load shedding
-- Tariffs
-- Fault reporting
-- Customer service
-- Connection issues
-- Praise or appreciation
-
-Why it matters:
-
-- Sentiment alone says how people feel; topics explain what they are reacting to.
-- This would make the dashboard more useful for decision-making.
-
-## Recommended Priority Order
-
-1. Manual annotation review set.
-2. Annotation dashboard.
-3. Training candidate promotion.
-4. Error analysis report.
-5. Model comparison page.
-6. Lexicon review tools.
-7. Trend analysis over time.
-8. Topic clustering.
-
-The strongest next step is the manual annotation review set, because it improves evaluation quality and gives a clearer foundation for all later model improvements.
+The current priority is completing and evaluating the end-user insight experience.
+Manual annotation and the annotation dashboard remain the strongest next development
+steps once the user-facing prototype is stable.

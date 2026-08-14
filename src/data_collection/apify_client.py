@@ -13,7 +13,9 @@ from apify_client import ApifyClient
 
 
 FACEBOOK_URL_PATTERN = re.compile(r"^https?://(www\.)?facebook\.com/", re.IGNORECASE)
+AT_MENTION_PATTERN = re.compile(r"@[\w.-]+", re.UNICODE)
 DEFAULT_ACTOR_ID = "apify/facebook-comments-scraper"
+MAX_COMMENTS_PER_URL = 100
 
 
 class ApifyFetchError(RuntimeError):
@@ -27,7 +29,7 @@ class ApifyConfig:
     api_key: str
     actor_id: str = DEFAULT_ACTOR_ID
     timeout_secs: int = 120
-    max_comments: int = 1000
+    max_comments: int = MAX_COMMENTS_PER_URL
     comments_mode: str = "ALL"
 
 
@@ -60,8 +62,11 @@ def _load_config() -> ApifyConfig:
     actor_id = os.getenv("APIFY_ACTOR_ID", DEFAULT_ACTOR_ID).strip() or DEFAULT_ACTOR_ID
     timeout_str = os.getenv("APIFY_TIMEOUT_SECS", "120").strip()
     timeout_secs = int(timeout_str) if timeout_str.isdigit() else 120
-    max_comments_str = os.getenv("APIFY_MAX_COMMENTS", "1000").strip()
-    max_comments = int(max_comments_str) if max_comments_str.isdigit() else 1000
+    max_comments_str = os.getenv("APIFY_MAX_COMMENTS", str(MAX_COMMENTS_PER_URL)).strip()
+    configured_max = (
+        int(max_comments_str) if max_comments_str.isdigit() else MAX_COMMENTS_PER_URL
+    )
+    max_comments = min(max(configured_max, 1), MAX_COMMENTS_PER_URL)
     comments_mode = os.getenv("APIFY_COMMENTS_MODE", "ALL").strip().upper() or "ALL"
     if comments_mode not in {"ALL", "NEWEST", "MOST_RELEVANT"}:
         comments_mode = "ALL"
@@ -74,8 +79,85 @@ def _load_config() -> ApifyConfig:
     )
 
 
-def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any]:
-    """Normalize different actor output fields to a stable schema."""
+def _has_value(value: Any) -> bool:
+    if value is None or value is False:
+        return False
+    return str(value).strip().lower() not in {"", "0", "false", "none", "null"}
+
+
+def _is_reply_item(item: dict[str, Any]) -> bool:
+    """Detect reply rows across common Facebook scraper schemas."""
+    for field in ("threadingDepth", "depth", "replyDepth"):
+        value = item.get(field)
+        try:
+            if value is not None and int(value) > 0:
+                return True
+        except (TypeError, ValueError):
+            if _has_value(value):
+                return True
+
+    if any(
+        _has_value(item.get(field))
+        for field in (
+            "replyToCommentId",
+            "parentCommentId",
+            "parent_comment_id",
+            "replyToId",
+            "parentId",
+            "topCommentId",
+        )
+    ):
+        return True
+
+    if str(item.get("type", "")).strip().lower() == "reply":
+        return True
+    return str(item.get("isReply", "")).strip().lower() == "true"
+
+
+def _structured_mention_names(item: dict[str, Any]) -> list[str]:
+    mentions = item.get("mentions") or []
+    if isinstance(mentions, dict):
+        mentions = [mentions]
+    if not isinstance(mentions, list):
+        return []
+
+    names: list[str] = []
+    for mention in mentions:
+        if isinstance(mention, str):
+            name = mention
+        elif isinstance(mention, dict):
+            name = next(
+                (
+                    str(mention[field])
+                    for field in ("name", "text", "displayName", "profileName")
+                    if _has_value(mention.get(field))
+                ),
+                "",
+            )
+        else:
+            name = ""
+        if name.strip():
+            names.append(name.strip())
+    return names
+
+
+def _strip_mentions(text: str, item: dict[str, Any]) -> str:
+    cleaned = AT_MENTION_PATTERN.sub(" ", text)
+    for name in sorted(_structured_mention_names(item), key=len, reverse=True):
+        cleaned = re.sub(
+            rf"(?<!\w)@?{re.escape(name)}(?=\s|[:,.!?;-]|$)",
+            " ",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+    return re.sub(r"\s+", " ", cleaned).strip(" ,:;-\t\r\n")
+
+
+def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any] | None:
+    """Normalize a top-level actor result to the dashboard's stable schema."""
+    if _is_reply_item(item):
+        return None
+
     text = (
         item.get("text")
         or item.get("message")
@@ -83,17 +165,26 @@ def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any]:
         or item.get("body")
         or ""
     )
+    text = _strip_mentions(str(text), item)
     comment_id = (
         item.get("commentId")
         or item.get("id")
         or item.get("fbId")
         or f"generated-{hash((text, item.get('timestamp')))}"
     )
-    timestamp = item.get("time") or item.get("timestamp") or item.get("createdAt") or _utc_now_iso()
+    timestamp = (
+        item.get("date")
+        or item.get("time")
+        or item.get("timestamp")
+        or item.get("publishedAt")
+        or item.get("createdAt")
+        or item.get("created_time")
+        or _utc_now_iso()
+    )
 
     return {
         "comment_id": str(comment_id),
-        "text": str(text).strip(),
+        "text": text,
         "timestamp": str(timestamp),
         "source_url": source_url,
     }
@@ -115,7 +206,10 @@ def fetch_comments(url: str, max_comments: int | None = None) -> list[dict[str, 
 
     config = _load_config()
     client = ApifyClient(config.api_key)
-    limit = max_comments if isinstance(max_comments, int) and max_comments > 0 else config.max_comments
+    requested_limit = (
+        max_comments if isinstance(max_comments, int) and max_comments > 0 else config.max_comments
+    )
+    limit = min(requested_limit, MAX_COMMENTS_PER_URL)
 
     if "facebook-comments-scraper" in config.actor_id:
         view_option_map = {
@@ -126,14 +220,14 @@ def fetch_comments(url: str, max_comments: int | None = None) -> list[dict[str, 
         actor_input = {
             "startUrls": [{"url": cleaned_url}],
             "resultsLimit": limit,
-            "includeNestedComments": True,
+            "includeNestedComments": False,
             "viewOption": view_option_map.get(config.comments_mode, "RANKED_UNFILTERED"),
         }
     else:
         actor_input = {
             "startUrls": [{"url": cleaned_url}],
             "resultsLimit": limit,
-            "includeNestedComments": True,
+            "includeNestedComments": False,
             "viewOption": "RECENT_ACTIVITY",
         }
 
@@ -164,5 +258,19 @@ def fetch_comments(url: str, max_comments: int | None = None) -> list[dict[str, 
                 "Check API key validity, actor id, URL visibility (public post), and network."
             ) from exc
 
-    normalised = [_normalise_item(item, cleaned_url) for item in items if isinstance(item, dict)]
-    return [row for row in normalised if row["text"]]
+    normalised: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        row = _normalise_item(item, cleaned_url)
+        if row is None or not row["text"]:
+            continue
+        dedupe_key = (row["comment_id"], row["text"])
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        normalised.append(row)
+        if len(normalised) >= limit:
+            break
+    return normalised

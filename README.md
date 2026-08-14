@@ -13,7 +13,10 @@ This prototype now includes:
 - baseline model training with Naive Bayes, Logistic Regression, and SVM
 - evaluation reports with confusion matrices
 - an alternate RoBERTa-labeled training branch
-- a Streamlit dashboard for metrics and live predictions
+- an end-user Streamlit dashboard for live analysis and policy-relevant insights
+- sentiment and emotion trends by day, week, or month
+- explainable topic grouping for Zambian energy concerns
+- downloadable stakeholder reports with evidence-linked recommendations
 
 Project status and planning docs:
 
@@ -49,6 +52,30 @@ python scripts/collection/download_data.py --url "https://www.facebook.com/..."
 ```
 
 Output will be written to `data/raw/comments.csv` by default.
+
+### Collect a Deduplicated URL Batch
+
+Place one Facebook post or video URL per line in a text file, then run:
+
+```powershell
+python scripts/collection/download_batch.py --urls-file data/raw/source_urls_new_batch.txt --limit 100
+```
+
+The batch collector identifies posts by their Facebook post/video ID, skips existing
+`comments_post_<id>.csv` files before calling Apify, and writes an audit trail to
+`data/raw/collection_manifest.csv`. The shared Apify client enforces a hard maximum of
+100 comments per URL, even if a larger value is supplied by another caller. Collection
+is limited to top-level comments: replies are disabled in the actor request and rejected
+again from returned rows using thread-depth and parent-comment fields. Profile names are
+not stored, and structured or `@` mentions are removed from comment text.
+
+On Windows machines where Python certificate validation is affected by an incorrect
+system clock, the equivalent Windows certificate-stack collector is:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/collection/download_batch_schannel.ps1 `
+  -UrlsFile data/raw/source_urls_new_batch.txt -Limit 100
+```
 
 ## Local Lexicon
 
@@ -122,7 +149,28 @@ The dashboard can now fetch and analyze a public Facebook post URL:
 streamlit run src/dashboard/app.py
 ```
 
-In the dashboard, paste a Facebook URL, choose a fetch limit, and click **Fetch, analyze, and save URL**.
+In the dashboard, paste a Facebook URL, choose a fetch limit, and click **Analyze public comments**.
+
+Before calling Apify, the dashboard extracts the Facebook post/video ID and checks for
+`data/raw/comments_post_<id>.csv`, prior dashboard raw fetches, and the combined raw
+dataset. A cache hit is analyzed locally and uses no Apify tokens. A new Apify fetch is
+also saved as a canonical per-post cache for future reuse. Both live and cached analysis
+are hard-capped at 100 comments per URL.
+
+The dashboard provides five end-user views:
+
+- **Analyze URL** for collecting and analyzing a public Facebook discussion
+- **Overview** for sentiment, emotions, dominant topics, and priority considerations
+- **Trends** for sentiment, volume, emotion, and sarcasm movement
+- **Topics** for explainable thematic grouping and representative comments
+- **Report** for a downloadable stakeholder briefing
+
+The end-user dashboard is URL-only. It does not expose the research corpus or saved
+analysis history; the four results tabs always describe the URL analyzed in the current
+session.
+
+Developer-facing model diagnostics and future annotation controls are intentionally kept
+outside the end-user dashboard.
 
 Each run saves:
 

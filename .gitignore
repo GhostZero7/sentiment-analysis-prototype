@@ -12,4 +12,7 @@ htmlcov/
 .coverage.*
 .ipynb_checkpoints/
 *.log
+tmp/
+~$*.docx
+.streamlit/secrets.toml
 data/processed/relevance/all_comments_relevance*.csv

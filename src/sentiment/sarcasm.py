@@ -87,7 +87,7 @@ LOCAL_INTENSIFIER_PATTERNS = (
 )
 
 LAUGHTER_PATTERN = re.compile(
-    r"(?:\U0001f602|\U0001f923|\blol\b|\bkkk\b|\bhaha\b|\bhehe\b|\blmao\b)",
+    r"(?:\U0001f602|\U0001f605|\U0001f923|\blol\b|\bkkk\b|\bhaha\b|\bhehe\b|\blmao\b)",
     re.IGNORECASE,
 )
 QUESTION_PATTERN = re.compile(r"\?")
@@ -99,6 +99,27 @@ COMPLAINT_RE = re.compile("|".join(COMPLAINT_PATTERNS), re.IGNORECASE)
 QUOTE_PROMISE_RE = re.compile("|".join(QUOTE_PROMISE_PATTERNS), re.IGNORECASE | re.DOTALL)
 LOCAL_INTENSIFIER_RE = re.compile("|".join(LOCAL_INTENSIFIER_PATTERNS), re.IGNORECASE)
 AT_LEAST_RE = re.compile(r"\bat least\b|\bfinally\b", re.IGNORECASE)
+DOMAIN_RE = re.compile(
+    r"\b(?:zesco|power|electricity|tariffs?|load\s*shedding|consumer|water|dam)\b",
+    re.IGNORECASE,
+)
+RHETORICAL_CUE_RE = re.compile(
+    r"\b(?:which|what|same|weren't|wasn't|rarely|can't|cannot|only|increase|increment|again)\b",
+    re.IGNORECASE,
+)
+AS_IF_DOMAIN_RE = re.compile(
+    r"\bas if\b.*\b(?:zesco|power|electricity|tariffs?|buying)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+ELECTION_INCREASE_RE = re.compile(
+    r"\b(?:increase|increment)\b.*\b(?:election|vote|2026)\b|"
+    r"\b(?:election|vote|2026)\b.*\b(?:increase|increment)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+LAUGHED_OFF_COMPLAINT_RE = re.compile(
+    r"\b(?:only thing we do is laugh|what else can possibly surprise us)\b",
+    re.IGNORECASE,
+)
 
 
 def _coerce_text(text: object) -> str:
@@ -140,7 +161,33 @@ def is_sarcastic(text: object) -> bool:
     if QUESTION_PATTERN.search(text_str) and LAUGHTER_PATTERN.search(text_str):
         return True
 
-    # Rule 6: faint praise plus a complaint context.
+    # Rule 6: domain-specific rhetorical questions often express disbelief
+    # even when they contain no word VADER recognizes as negative.
+    if (
+        QUESTION_PATTERN.search(text_str)
+        and DOMAIN_RE.search(text_lower)
+        and RHETORICAL_CUE_RE.search(text_lower)
+    ):
+        return True
+
+    # Rule 7: explicit "as if" contradictions about power or tariffs.
+    if AS_IF_DOMAIN_RE.search(text_lower):
+        return True
+
+    # Rule 8: laughter paired with an outage/load-shedding complaint.
+    if LAUGHTER_PATTERN.search(text_str) and COMPLAINT_RE.search(text_lower):
+        return True
+
+    # Rule 9: calls for a price increase near an election are commonly ironic
+    # in this discourse and indicate dissatisfaction with the proposed policy.
+    if ELECTION_INCREASE_RE.search(text_lower):
+        return True
+
+    # Rule 10: resigned laughter and surprise are complaint signals.
+    if LAUGHED_OFF_COMPLAINT_RE.search(text_lower):
+        return True
+
+    # Rule 11: faint praise plus a complaint context.
     if AT_LEAST_RE.search(text_lower) and COMPLAINT_RE.search(text_lower):
         return True
 
@@ -186,4 +233,3 @@ def annotate_csv(
     output_file.parent.mkdir(parents=True, exist_ok=True)
     annotated.to_csv(output_file, index=False)
     return annotated
-

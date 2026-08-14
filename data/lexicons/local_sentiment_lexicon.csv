@@ -127,3 +127,14 @@ nipa,the first day of month,neutral,0.0,"nipa wanu"
 mwe,you (plural emphatic),neutral,0.0,adds weight
 kabili,again (complaint),negative,-0.3,"kabili"
 pali,there is (rhetorical),neutral,0.0,"pali malaiti?"
+taking for granted/taking zambians for granted,disrespecting or exploiting people,negative,-0.8,direct public-service complaint
+pea-sized memories,accusation that the public is being treated as forgetful,negative,-0.8,rhetorical criticism
+rarely have,service is seldom available,negative,-0.7,availability complaint
+can't see/cannot see,service is not available,negative,-0.7,availability complaint
+don't know wat there doing/don't know what they are doing,accusation of incompetence,negative,-0.8,common spelling variants
+don't have a loya/no loya/no lawyer,fear of speaking without legal protection,negative,-0.7,implicit complaint
+jokers,accusation that officials are not serious,negative,-0.8,direct insult
+what else can possibly surprise us,resigned disbelief,sarcasm_marker,-0.9,positive VADER wording used as complaint
+ifya bupuba fye,just nonsense,negative,-1.0,spaced hard-negative variant
+which electricity,rhetorical complaint that electricity is unavailable,negative,-0.8,works even when punctuation is missing
+not making sense/does not make sense/doesn't make sense,statement that a decision or service is unreasonable,negative,-0.8,direct complaint that can contain otherwise positive words

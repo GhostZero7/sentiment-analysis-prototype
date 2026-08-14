@@ -27,7 +27,12 @@ FALLBACK_LOCAL_SENTIMENT_LEXICON: dict[str, LocalLexiconMatch] = {
     "awe": LocalLexiconMatch(token="awe", weight=-0.7, label="negative"),
 }
 
-HARD_NEGATIVE_TERMS = {"fyabupuba", "ifyabupuba", "fyabupuba fye"}
+HARD_NEGATIVE_TERMS = {
+    "fyabupuba",
+    "ifyabupuba",
+    "fyabupuba fye",
+    "ifya bupuba fye",
+}
 
 
 def tokenize(text: str) -> list[str]:

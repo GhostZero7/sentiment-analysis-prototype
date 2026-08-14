@@ -14,9 +14,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.sentiment.nrc_analyzer import get_nrc_scores
 from src.sentiment.sarcasm import is_sarcastic
+from src.sentiment.text_selection import select_sentiment_text
 from src.sentiment.vader_analyzer import get_vader_scores
 
 DEFAULT_INPUT = PROJECT_ROOT / "data" / "processed" / "cleaned" / "comments_stage2_emoji_stopword_lemma.csv"
+DEFAULT_METADATA = PROJECT_ROOT / "data" / "processed" / "cleaned" / "comments_stage1_3plus_english.csv"
 DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "processed" / "labeled" / "final_label.csv"
 DEFAULT_FAILURES = PROJECT_ROOT / "data" / "results" / "label_failures" / "final_label_failures.csv"
 
@@ -113,11 +115,37 @@ def _process_comment(text: str) -> tuple[dict[str, object], dict[str, object] | 
         }, failure
 
 
+def _sentiment_texts(df: pd.DataFrame, metadata_path: Path) -> list[str]:
+    """Match processed rows to original text without changing the output schema."""
+    if any(column in df.columns for column in ("text_raw", "text", "text_clean")):
+        return [select_sentiment_text(row) for _, row in df.iterrows()]
+
+    if "comment_id" not in df.columns or not metadata_path.is_file():
+        return df["processed_text"].fillna("").astype(str).tolist()
+
+    metadata = pd.read_csv(metadata_path, dtype={"comment_id": str})
+    if "comment_id" not in metadata.columns:
+        return df["processed_text"].fillna("").astype(str).tolist()
+
+    readable_by_id = {
+        str(row["comment_id"]): select_sentiment_text(row)
+        for _, row in metadata.iterrows()
+    }
+    return [
+        readable_by_id.get(str(row["comment_id"]), "") or str(row.get("processed_text", ""))
+        for _, row in df.iterrows()
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Apply sarcasm detection before VADER sentiment labeling.")
-    parser.parse_args()
+    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
+    parser.add_argument("--metadata", type=Path, default=DEFAULT_METADATA)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--failures", type=Path, default=DEFAULT_FAILURES)
+    args = parser.parse_args()
 
-    input_path, output_path, failures_path = DEFAULT_INPUT, DEFAULT_OUTPUT, DEFAULT_FAILURES
+    input_path, output_path, failures_path = args.input, args.output, args.failures
     if not input_path.is_file():
         print(f"Input file not found: {input_path}")
         return 1
@@ -127,7 +155,7 @@ def main() -> int:
         print("Input file must contain a 'processed_text' column.")
         return 1
 
-    texts = df["processed_text"].fillna("").astype(str).tolist()
+    texts = _sentiment_texts(df, args.metadata)
     total = len(texts)
     labeled_rows: list[dict[str, object]] = []
     failures: list[dict[str, object]] = []

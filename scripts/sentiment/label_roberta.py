@@ -29,8 +29,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--text-column",
-        default="processed_text",
-        help="Text column to label.",
+        default="text",
+        help="Readable text column to label so contractions and negation are preserved.",
     )
     parser.add_argument(
         "--model",

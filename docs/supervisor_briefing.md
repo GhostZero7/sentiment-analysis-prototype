@@ -144,7 +144,7 @@ The system first calculates base NRC scores, then adds matching local emotion sc
 
 Current local emotion coverage:
 
-- 386 of 2,813 relevant comments contain at least one local emotion match.
+- 351 of 2,813 relevant comments contain at least one local emotion match.
 
 Key files:
 
@@ -163,17 +163,16 @@ Models used:
 
 Latest relevant-only VADER evaluation:
 
-- Naive Bayes accuracy: 0.5595
-- Logistic Regression accuracy: 0.6377
-- SVM accuracy: 0.6448
+- Naive Bayes accuracy: 0.5506; weighted F1: 0.5370
+- Logistic Regression accuracy: 0.5826; weighted F1: 0.5803
+- SVM accuracy: 0.5844; weighted F1: 0.5829
 
-Latest relevant-only RoBERTa-branch evaluation:
+These results use labels regenerated on 3 April 2026 after rule-based sentiment scoring
+was corrected to preserve readable text, contractions, and negation.
 
-- Naive Bayes accuracy: 0.6661
-- Logistic Regression accuracy: 0.7229
-- SVM accuracy: 0.7123
-
-The RoBERTa-labeled branch performs better in the current evaluation, but it is kept as a separate branch so the original VADER-based flow remains explainable and easy to inspect.
+The optional RoBERTa branch was not refreshed in this corrected run and is not used by
+the end-user dashboard. Its previous results should not be compared with the corrected
+VADER branch until it is relabeled and evaluated again.
 
 Key files:
 
@@ -186,9 +185,23 @@ Key files:
 - `data/results/`
 - `data/models/`
 
-### 8. Dashboard and Live URL Analysis
+### 8. End-User Dashboard and Live URL Analysis
 
-The Streamlit dashboard shows metrics and supports live analysis of a public Facebook post URL. A user can paste a URL, select a fetch limit, and run analysis directly from the dashboard.
+The Streamlit dashboard is designed for policy analysts and energy communicators. It
+supports saved research data, cumulative URL-analysis history, and live analysis of a
+public Facebook post URL.
+
+The user-facing views are:
+
+- Overview of sentiment, emotions, dominant topic, and priority considerations.
+- Sentiment, emotion, volume, and sarcasm trends by day, week, or month.
+- Explainable topic grouping for major Zambian energy concerns.
+- A downloadable stakeholder report.
+- Evidence-linked policy and communication considerations.
+- Live analysis of a public Facebook URL.
+
+Training metrics, confusion matrices, and future annotation controls are developer/admin
+functions and are not shown in the end-user dashboard.
 
 For each live URL analysis, the system:
 
@@ -211,6 +224,9 @@ Key files:
 
 - `src/dashboard/app.py`
 - `src/dashboard/live_analysis.py`
+- `src/insights/topic_analyzer.py`
+- `src/insights/policy_report.py`
+- `src/temporal/event_tracker.py`
 - `data/raw/url_links.csv`
 - `data/raw/url_fetches/`
 - `data/results/url_analyses/`
@@ -233,6 +249,8 @@ Automated tests currently pass:
 
 - The project has an end-to-end pipeline from Facebook comments to analyzed sentiment outputs.
 - The dashboard can run live analysis on a public Facebook post URL.
+- The dashboard shows topic-level findings and time-based sentiment trends.
+- The dashboard generates a stakeholder report with evidence-linked recommendations.
 - Relevance filtering keeps the training data focused on energy-service comments.
 - Sarcasm detection reduces misclassification of sarcastic praise.
 - Local sentiment and emotion lexicons make the system more appropriate for Zambian/code-switched comments.
@@ -264,15 +282,12 @@ Automated tests currently pass:
 streamlit run src/dashboard/app.py
 ```
 
-2. Show the existing evaluation metrics and confusion matrices.
-3. Explain that the system trains on relevant comments only.
-4. Show examples of sarcasm-aware and local-lexicon sentiment correction.
-5. Paste a public Facebook post URL into the live analysis section.
-6. Run analysis and show the saved outputs:
-
-- Raw fetched comments.
-- Per-link analyzed CSV.
-- Cumulative analysis history.
+2. Show the Overview sentiment, emotion, and priority findings.
+3. Show how sentiment and frustration change in the Trends tab.
+4. Open the Topics tab and review comments behind a dominant concern.
+5. Download the stakeholder report and explain how each recommendation cites evidence.
+6. Paste a public Facebook post URL into the Analyze URL tab.
+7. Run the analysis and show how the new results become the selected dashboard view.
 - Relevant training candidates.
 
 ## One-Sentence Explanation

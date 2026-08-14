@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: zambian-green-energy-sentiment
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-app.txt
+    startCommand: >-
+      streamlit run src/dashboard/app.py
+      --server.address 0.0.0.0
+      --server.port $PORT
+      --server.headless true
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: APIFY_API_KEY
+        sync: false
+      - key: APIFY_ACTOR_ID
+        value: apify/facebook-comments-scraper
+      - key: APIFY_TIMEOUT_SECS
+        value: "120"
+      - key: APIFY_MAX_COMMENTS
+        value: "100"
+      - key: APIFY_COMMENTS_MODE
+        value: ALL

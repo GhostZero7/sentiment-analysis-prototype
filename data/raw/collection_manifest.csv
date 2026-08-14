@@ -1,0 +1,14 @@
+content_id,source_url,requested_limit,output_path,collected_at,status,comment_count,actor_run_id,error
+650123286908838,https://www.facebook.com/100057335174945/posts/650123286908838/,100,data/raw/comments_post_650123286908838.csv,2026-04-03T00:20:11.5252464Z,collected,100,EYhzYl7mfasq1OfFh,
+655022869752213,https://www.facebook.com/100057335174945/posts/655022869752213/,100,data/raw/comments_post_655022869752213.csv,2026-04-03T00:20:11.5883907Z,skipped_existing,0,,
+834969195090912,https://www.facebook.com/100057335174945/posts/834969195090912/,100,data/raw/comments_post_834969195090912.csv,2026-04-03T00:20:45.5918580Z,collected,100,1TjhQY7lDh2Hynudg,
+6124054071047970,https://www.facebook.com/100064560977290/posts/6124054071047970/,100,data/raw/comments_post_6124054071047970.csv,2026-04-03T00:20:45.6108250Z,skipped_existing,0,,
+1530809752173516,https://www.facebook.com/100057335174945/posts/1530809752173516/,100,data/raw/comments_post_1530809752173516.csv,2026-04-03T00:21:08.3535377Z,collected,33,XaWn3DY4M0gK5OWQH,
+807522188231434,https://www.facebook.com/100069209799787/posts/807522188231434/,100,data/raw/comments_post_807522188231434.csv,2026-04-03T00:21:20.3401182Z,collected,11,k1QEURIBHusrKij5v,
+838319848059298,https://www.facebook.com/znbctoday/videos/838319848059298/,100,data/raw/comments_post_838319848059298.csv,2026-04-03T00:21:42.9499635Z,collected,45,rOn9QRl6KybbUdpdz,
+932739655554327,https://www.facebook.com/100064549037984/posts/932739655554327/,100,data/raw/comments_post_932739655554327.csv,2026-04-03T00:22:19.6519426Z,collected,100,WZAGIdx93NqMKSnQM,
+914866127728502,https://www.facebook.com/100076153686273/posts/914866127728502/,100,data/raw/comments_post_914866127728502.csv,2026-04-03T00:23:12.2854180Z,collected,100,FAZjuYkDRFEZu9eZc,
+1098187275806177,https://www.facebook.com/100068447443740/posts/1098187275806177/,100,data/raw/comments_post_1098187275806177.csv,2026-07-31T00:44:12.9027207Z,failed,0,2UJ4e6vy2hjrPDM5a,Actor run 2UJ4e6vy2hjrPDM5a exceeded the 10-minute polling deadline.
+837739135163517,https://www.facebook.com/100067823136380/posts/837739135163517/,100,data/raw/comments_post_837739135163517.csv,2026-07-31T00:44:58.2467778Z,collected,91,wkLoKcKkX1GeZLdGw,
+449906256485201,https://www.facebook.com/100043974916561/posts/449906256485201/,100,data/raw/comments_post_449906256485201.csv,2026-07-31T00:45:54.0836463Z,collected,99,mdsbtA8LdNop5dJQy,
+1098187275806177,https://www.facebook.com/100068447443740/posts/1098187275806177/,100,data/raw/comments_post_1098187275806177.csv,2026-07-31T00:46:26.2017610Z,collected_recovered,99,2UJ4e6vy2hjrPDM5a,Recovered from the original successful run; no retry was started.
