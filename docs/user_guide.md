@@ -19,7 +19,7 @@ and select **Analyze public comments**.
 The system checks the local raw dataset before contacting Apify. If that post or video
 has already been fetched, its saved comments are analyzed locally and the dashboard
 confirms that no Apify tokens were used. Apify is contacted only for an unseen URL, and
-all requests are limited to 100 top-level comments. Replies are excluded so reply names
+all requests are limited to 300 top-level comments. Replies are excluded so reply names
 and side conversations do not distort the post-level sentiment result.
 
 When analysis finishes, the Overview, Trends, Topics, and Report tabs show results only

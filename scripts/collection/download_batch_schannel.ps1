@@ -1,8 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$UrlsFile,
-    [ValidateRange(1, 100)]
-    [int]$Limit = 100,
+    [ValidateRange(1, 300)]
+    [int]$Limit = 300,
     [string]$OutputDir = "data/raw",
     [string]$Manifest = "data/raw/collection_manifest.csv"
 )

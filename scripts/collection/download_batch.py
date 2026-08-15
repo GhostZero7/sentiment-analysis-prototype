@@ -18,7 +18,7 @@ from src.data_collection.apify_client import ApifyFetchError, fetch_comments
 from src.data_collection.url_utils import canonical_facebook_url, facebook_content_id
 
 
-MAX_BATCH_LIMIT = 100
+MAX_BATCH_LIMIT = 300
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "raw"
 DEFAULT_MANIFEST = DEFAULT_OUTPUT_DIR / "collection_manifest.csv"
 

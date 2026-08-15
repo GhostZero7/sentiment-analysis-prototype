@@ -15,7 +15,7 @@ from apify_client import ApifyClient
 FACEBOOK_URL_PATTERN = re.compile(r"^https?://(www\.)?facebook\.com/", re.IGNORECASE)
 AT_MENTION_PATTERN = re.compile(r"@[\w.-]+", re.UNICODE)
 DEFAULT_ACTOR_ID = "apify/facebook-comments-scraper"
-MAX_COMMENTS_PER_URL = 100
+MAX_COMMENTS_PER_URL = 300
 
 
 class ApifyFetchError(RuntimeError):

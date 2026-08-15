@@ -36,8 +36,8 @@ def main() -> int:
     parser.add_argument(
         "--limit",
         type=int,
-        default=100,
-        help="Maximum number of items/comments to fetch (default: 100)",
+        default=300,
+        help="Maximum number of items/comments to fetch (default: 300)",
     )
     parser.add_argument(
         "--output",

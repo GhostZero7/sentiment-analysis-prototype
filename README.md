@@ -58,13 +58,13 @@ Output will be written to `data/raw/comments.csv` by default.
 Place one Facebook post or video URL per line in a text file, then run:
 
 ```powershell
-python scripts/collection/download_batch.py --urls-file data/raw/source_urls_new_batch.txt --limit 100
+python scripts/collection/download_batch.py --urls-file data/raw/source_urls_new_batch.txt --limit 300
 ```
 
 The batch collector identifies posts by their Facebook post/video ID, skips existing
 `comments_post_<id>.csv` files before calling Apify, and writes an audit trail to
 `data/raw/collection_manifest.csv`. The shared Apify client enforces a hard maximum of
-100 comments per URL, even if a larger value is supplied by another caller. Collection
+300 comments per URL, even if a larger value is supplied by another caller. Collection
 is limited to top-level comments: replies are disabled in the actor request and rejected
 again from returned rows using thread-depth and parent-comment fields. Profile names are
 not stored, and structured or `@` mentions are removed from comment text.
@@ -74,7 +74,7 @@ system clock, the equivalent Windows certificate-stack collector is:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/collection/download_batch_schannel.ps1 `
-  -UrlsFile data/raw/source_urls_new_batch.txt -Limit 100
+  -UrlsFile data/raw/source_urls_new_batch.txt -Limit 300
 ```
 
 ## Local Lexicon
@@ -155,7 +155,7 @@ Before calling Apify, the dashboard extracts the Facebook post/video ID and chec
 `data/raw/comments_post_<id>.csv`, prior dashboard raw fetches, and the combined raw
 dataset. A cache hit is analyzed locally and uses no Apify tokens. A new Apify fetch is
 also saved as a canonical per-post cache for future reuse. Both live and cached analysis
-are hard-capped at 100 comments per URL.
+are hard-capped at 300 comments per URL.
 
 The dashboard provides five end-user views:
 

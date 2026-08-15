@@ -321,8 +321,8 @@ def _render_url_analysis() -> None:
         max_comments = st.number_input(
             "Maximum comments",
             min_value=10,
-            max_value=100,
-            value=100,
+            max_value=300,
+            value=300,
             step=10,
         )
         submitted = st.form_submit_button("Analyze public comments")

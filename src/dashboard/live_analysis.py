@@ -333,7 +333,7 @@ def analyze_facebook_url(
     url: str,
     *,
     models_dir: str | Path,
-    max_comments: int = 100,
+    max_comments: int = 300,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Analyze cached comments first, using Apify only for unseen URLs."""
     max_comments = min(max(int(max_comments), 1), MAX_COMMENTS_PER_URL)

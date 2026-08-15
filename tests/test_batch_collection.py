@@ -28,7 +28,7 @@ def test_batch_skips_existing_and_enforces_limit(tmp_path, monkeypatch):
                 "timestamp": "2026-01-01T00:00:00Z",
                 "source_url": url,
             }
-            for index in range(150)
+            for index in range(350)
         ]
 
     monkeypatch.setattr(download_batch, "fetch_comments", fake_fetch)
@@ -38,27 +38,27 @@ def test_batch_skips_existing_and_enforces_limit(tmp_path, monkeypatch):
             "https://www.facebook.com/page/posts/111/?app=fbl",
             "https://www.facebook.com/page/posts/222/?app=fbl",
         ],
-        limit=100,
+        limit=300,
         output_dir=tmp_path,
         manifest_path=manifest,
     )
 
     assert results["status"].tolist() == ["skipped_existing", "collected"]
-    assert calls == [("https://www.facebook.com/page/posts/222/", 100)]
-    assert len(pd.read_csv(tmp_path / "comments_post_222.csv")) == 100
+    assert calls == [("https://www.facebook.com/page/posts/222/", 300)]
+    assert len(pd.read_csv(tmp_path / "comments_post_222.csv")) == 300
 
 
-def test_batch_rejects_limit_above_100(tmp_path):
-    with pytest.raises(ValueError, match="between 1 and 100"):
+def test_batch_rejects_limit_above_300(tmp_path):
+    with pytest.raises(ValueError, match="between 1 and 300"):
         download_batch.collect_batch(
             ["https://www.facebook.com/page/posts/222/"],
-            limit=101,
+            limit=301,
             output_dir=tmp_path,
             manifest_path=tmp_path / "manifest.csv",
         )
 
 
-def test_shared_apify_client_caps_every_request_at_100(monkeypatch):
+def test_shared_apify_client_caps_every_request_at_300(monkeypatch):
     captured: dict[str, object] = {}
 
     class DummyActor:
@@ -106,7 +106,7 @@ def test_shared_apify_client_caps_every_request_at_100(monkeypatch):
     )
 
     assert len(rows) == 1
-    assert captured["run_input"]["resultsLimit"] == 100
+    assert captured["run_input"]["resultsLimit"] == 300
     assert captured["run_input"]["includeNestedComments"] is False
     assert rows[0]["text"] == "Power restored"
     assert rows[0]["timestamp"] == "2026-01-01"

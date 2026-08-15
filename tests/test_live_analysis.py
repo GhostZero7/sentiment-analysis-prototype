@@ -157,7 +157,7 @@ def test_cached_post_is_loaded_by_content_id_and_respects_limit(tmp_path, monkey
                 "timestamp": "2026-01-01T00:00:00Z",
                 "source_url": "https://www.facebook.com/page/posts/123456/?app=fbl",
             }
-            for index in range(125)
+            for index in range(325)
         ]
     ).to_csv(cached_path, index=False)
 
@@ -168,8 +168,8 @@ def test_cached_post_is_loaded_by_content_id_and_respects_limit(tmp_path, monkey
 
     assert cached is not None
     assert cached.path == cached_path
-    assert cached.available_rows == 125
-    assert len(cached.comments) == 100
+    assert cached.available_rows == 325
+    assert len(cached.comments) == 300
     assert all(
         row["source_url"] == "https://www.facebook.com/page/posts/123456/"
         for row in cached.comments
