@@ -141,3 +141,4 @@ not making sense/does not make sense/doesn't make sense,statement that a decisio
 holding the country at ransom/holding country at ransom,accusation that essential service failures are coercing the public,negative,-1.0,strong institutional criticism
 busy lying/lying,accusation that officials are being dishonest,negative,-0.8,overrides positive promise language in a complaint
 still a mess,statement that a promised improvement has not happened,negative,-0.8,failed-stability complaint
+inconsistency/inconsistencies,conflicting service claims or outcomes,negative,-0.8,direct criticism of unreliable communication or supply

@@ -18,7 +18,8 @@ TOKEN_PATTERN = re.compile(r"\b[\w']+\b", re.UNICODE)
 _NRC_EMOTIONS = ("anger", "anticipation", "fear", "trust", "sadness")
 _LOCAL_EMOTIONS = ("anger", "fear", "trust", "hope", "sadness", "frustration")
 DISMISSED_PROMISE_RE = re.compile(
-    r"\b(?:lying|lies|lied|ransom)\b.*\b(?:hope|trust|stability|stable|promise)\b|"
+    r"\b(?:lying|lies|lied|ransom|inconsistenc(?:y|ies))\b.*"
+    r"\b(?:hope|trust|stability|stable|promise)\b|"
     r"\b(?:hope|trust|stability|stable|promise)\b.*"
     r"\b(?:still a mess|nothing (?:has )?changed|no change|don't think.*change)\b",
     re.IGNORECASE | re.DOTALL,

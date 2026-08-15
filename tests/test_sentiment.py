@@ -129,6 +129,21 @@ def test_failed_stability_promise_and_ransom_accusation_are_negative():
     assert "hope (anticipation/trust)" in emotions["nrc_emotion_terms"]
 
 
+def test_inconsistent_stability_claim_is_negative_and_suppresses_trust():
+    comment = (
+        "Inconsistencies, last week they said 3 hours stable of power and today 7 hours "
+        "and in our area we had power from Friday up to Monday"
+    )
+    scores = get_vader_scores(comment)
+    emotions = get_nrc_scores(comment)
+
+    assert scores["raw_label"] == "positive"
+    assert scores["label"] == "negative"
+    assert "inconsistencies" in scores["local_correction_terms"]
+    assert emotions["positive_emotion_suppressed"] is True
+    assert emotions["nrc_trust"] == 0.0
+
+
 def test_sentiment_text_prefers_original_over_stopword_processed_text():
     row = {
         "text_raw": "We don't have power.",
