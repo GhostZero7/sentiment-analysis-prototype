@@ -122,6 +122,11 @@ def test_failed_stability_promise_and_ransom_accusation_are_negative():
     assert scores["local_correction_applied"] is True
     assert "holding the country at ransom" in scores["local_correction_terms"]
     assert "still a mess" in scores["local_correction_terms"]
+    emotions = get_nrc_scores(comment)
+    assert emotions["positive_emotion_suppressed"] is True
+    assert emotions["nrc_trust"] == 0.0
+    assert emotions["nrc_hope"] == 0.0
+    assert "hope (anticipation/trust)" in emotions["nrc_emotion_terms"]
 
 
 def test_sentiment_text_prefers_original_over_stopword_processed_text():

@@ -17,6 +17,12 @@ DEFAULT_LOCAL_EMOTION_PATH = PROJECT_ROOT / "data" / "lexicons" / "local_emotion
 TOKEN_PATTERN = re.compile(r"\b[\w']+\b", re.UNICODE)
 _NRC_EMOTIONS = ("anger", "anticipation", "fear", "trust", "sadness")
 _LOCAL_EMOTIONS = ("anger", "fear", "trust", "hope", "sadness", "frustration")
+DISMISSED_PROMISE_RE = re.compile(
+    r"\b(?:lying|lies|lied|ransom)\b.*\b(?:hope|trust|stability|stable|promise)\b|"
+    r"\b(?:hope|trust|stability|stable|promise)\b.*"
+    r"\b(?:still a mess|nothing (?:has )?changed|no change|don't think.*change)\b",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +117,11 @@ def _local_scores(matches: list[LocalEmotionMatch], *, is_sarcastic: bool) -> di
     return scores
 
 
+def has_dismissed_positive_emotion(text: str) -> bool:
+    """Detect hope or trust language quoted as a failed or dishonest promise."""
+    return bool(DISMISSED_PROMISE_RE.search(str(text or "")))
+
+
 def get_nrc_scores(text: str, *, is_sarcastic: bool = False) -> dict[str, Any]:
     """Return NRC scores supplemented by explainable local emotion weights."""
     tokens = _tokenize(text)
@@ -119,11 +130,17 @@ def get_nrc_scores(text: str, *, is_sarcastic: bool = False) -> dict[str, Any]:
 
     counts = {emotion: 0 for emotion in _NRC_EMOTIONS}
     matched_tokens = 0
+    evidence_terms: list[str] = []
     for token in tokens:
         emotions = nrc_lexicon.get(token)
         if not emotions:
             continue
         matched_tokens += 1
+        tracked = [emotion for emotion in emotions if emotion in _NRC_EMOTIONS]
+        if tracked:
+            evidence = f"{token} ({'/'.join(sorted(set(tracked)))})"
+            if evidence not in evidence_terms:
+                evidence_terms.append(evidence)
         for emotion in emotions:
             if emotion in counts:
                 counts[emotion] += 1
@@ -135,8 +152,9 @@ def get_nrc_scores(text: str, *, is_sarcastic: bool = False) -> dict[str, Any]:
     base_hope = base["anticipation"]
     base_frustration = (base["anger"] + base["sadness"]) / 2.0
 
+    positive_emotion_suppressed = is_sarcastic or has_dismissed_positive_emotion(text)
     local_matches = _match_local_terms(text)
-    local = _local_scores(local_matches, is_sarcastic=is_sarcastic)
+    local = _local_scores(local_matches, is_sarcastic=positive_emotion_suppressed)
 
     combined = {
         "anger": min(1.0, base["anger"] + local["anger"]),
@@ -146,10 +164,14 @@ def get_nrc_scores(text: str, *, is_sarcastic: bool = False) -> dict[str, Any]:
         "sadness": min(1.0, base["sadness"] + local["sadness"]),
         "frustration": min(1.0, base_frustration + local["frustration"]),
     }
+    if positive_emotion_suppressed:
+        combined["trust"] = 0.0
+        combined["hope"] = 0.0
 
     return {
         "nrc_token_count": token_count,
         "nrc_matched_token_count": matched_tokens,
+        "nrc_emotion_terms": ", ".join(evidence_terms),
         "nrc_base_anger": base["anger"],
         "nrc_base_anticipation": base["anticipation"],
         "nrc_base_fear": base["fear"],
@@ -160,6 +182,7 @@ def get_nrc_scores(text: str, *, is_sarcastic: bool = False) -> dict[str, Any]:
         "local_emotion_applied": bool(local_matches),
         "local_emotion_terms": ",".join(sorted(match.term for match in local_matches)),
         "local_emotion_match_count": len(local_matches),
+        "positive_emotion_suppressed": positive_emotion_suppressed,
         **{f"local_{emotion}_score": local[emotion] for emotion in _LOCAL_EMOTIONS},
         "nrc_anger": combined["anger"],
         "nrc_anticipation": base["anticipation"],

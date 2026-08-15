@@ -8,8 +8,14 @@ from src.insights.policy_report import (
     build_policy_recommendations,
     build_stakeholder_report,
 )
+from src.insights.pdf_report import build_executive_summary_pdf
 from src.insights.topic_analyzer import add_topic_labels, assign_topic, summarize_topics
-from src.temporal.event_tracker import build_sentiment_trends, describe_negative_trend
+from src.temporal.event_tracker import (
+    build_comment_progression,
+    build_sentiment_trends,
+    describe_comment_progression,
+    describe_negative_trend,
+)
 
 
 def _sample_comments() -> pd.DataFrame:
@@ -86,6 +92,16 @@ def test_trend_builder_aggregates_sentiment_and_describes_direction():
     assert "decreased by 100.0 percentage points" in describe_negative_trend(trends)
 
 
+def test_comment_progression_shows_movement_without_multiple_time_periods():
+    frame = _sample_comments().copy()
+    frame["timestamp"] = "2026-01-01T08:00:00Z"
+    progression = build_comment_progression(frame, segments=2)
+
+    assert progression["period"].tolist() == ["Comments 1-2", "Comments 3-4"]
+    assert progression["negative_percent"].tolist() == [100.0, 0.0]
+    assert "fell by 100.0 points" in describe_comment_progression(progression)
+
+
 def test_policy_recommendations_include_auditable_evidence():
     topic_summary = pd.DataFrame(
         [
@@ -126,3 +142,22 @@ def test_stakeholder_report_contains_findings_recommendations_and_limits():
     assert "## Dominant Topics" in report
     assert "## Policy and Communication Considerations" in report
     assert "not a representative population survey" in report
+
+
+def test_stakeholder_report_uses_comment_progression_for_one_period():
+    frame = _sample_comments().copy()
+    frame["timestamp"] = "2026-01-01T08:00:00Z"
+    report = build_stakeholder_report(frame, source_label="Test dataset")
+
+    assert "from the first to last comment group" in report
+
+
+def test_executive_summary_pdf_is_generated():
+    pdf = build_executive_summary_pdf(
+        _sample_comments(),
+        source_label="https://www.facebook.com/example/posts/123/",
+        generated_at=datetime(2026, 1, 3, tzinfo=timezone.utc),
+    )
+
+    assert pdf.startswith(b"%PDF")
+    assert len(pdf) > 2_000

@@ -68,7 +68,15 @@ def test_live_analysis_scores_comments_and_dedupes_saved_outputs(tmp_path, monke
     )
     assert len(analyzed) == 3
     assert analyzed["is_relevant"].sum() == 2
-    assert set(["corrected_label", "nrc_anger", "logistic_regression_prediction"]).issubset(analyzed.columns)
+    assert set(
+        [
+            "corrected_label",
+            "nrc_anger",
+            "nrc_emotion_terms",
+            "positive_emotion_suppressed",
+            "logistic_regression_prediction",
+        ]
+    ).issubset(analyzed.columns)
     negated_outage = analyzed.loc[analyzed["comment_id"].astype(str).eq("3")].iloc[0]
     assert negated_outage["corrected_label"] == "negative"
 

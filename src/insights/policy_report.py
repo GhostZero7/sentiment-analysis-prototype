@@ -8,7 +8,12 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from src.insights.topic_analyzer import EMOTION_COLUMNS, add_topic_labels, summarize_topics
-from src.temporal.event_tracker import build_sentiment_trends, describe_negative_trend
+from src.temporal.event_tracker import (
+    build_comment_progression,
+    build_sentiment_trends,
+    describe_comment_progression,
+    describe_negative_trend,
+)
 
 
 TOPIC_RECOMMENDATIONS: dict[str, str] = {
@@ -211,9 +216,16 @@ def build_stakeholder_report(
     labeled = frame if "topic" in frame.columns else add_topic_labels(frame)
     topics = summarize_topics(labeled, label_column=label_column)
     trends = build_sentiment_trends(labeled, frequency="Day", label_column=label_column)
+    progression = build_comment_progression(labeled, label_column=label_column)
+    if len(trends) >= 2:
+        movement_summary = describe_negative_trend(trends)
+        recommendation_trends = trends
+    else:
+        movement_summary = describe_comment_progression(progression)
+        recommendation_trends = None
     recommendations = build_policy_recommendations(
         topics,
-        trend_data=trends,
+        trend_data=recommendation_trends,
         total_comments=len(labeled),
     )
     sentiment = _sentiment_counts(labeled, label_column)
@@ -240,7 +252,7 @@ def build_stakeholder_report(
         f"- Dominant sentiment: **{dominant_sentiment}**.",
         f"- Most discussed topic: **{top_topic}**.",
         f"- Leading detected emotion: **{leading_emotion}**.",
-        f"- {describe_negative_trend(trends)}",
+        f"- {movement_summary}",
         "",
         "## Sentiment Distribution",
         "",

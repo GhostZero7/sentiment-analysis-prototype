@@ -19,6 +19,15 @@ EMOTION_COLUMNS = (
     "nrc_hope",
     "nrc_frustration",
 )
+TREND_COLUMNS = [
+    "period",
+    "comment_count",
+    "negative_percent",
+    "neutral_percent",
+    "positive_percent",
+    "sarcasm_percent",
+    *EMOTION_COLUMNS,
+]
 
 
 def find_timestamp_column(frame: pd.DataFrame) -> str | None:
@@ -54,22 +63,13 @@ def build_sentiment_trends(
     label_column: str = "corrected_label",
 ) -> pd.DataFrame:
     """Aggregate volume, sentiment share, sarcasm, and emotions over time."""
-    columns = [
-        "period",
-        "comment_count",
-        "negative_percent",
-        "neutral_percent",
-        "positive_percent",
-        "sarcasm_percent",
-        *EMOTION_COLUMNS,
-    ]
     if frame.empty or label_column not in frame.columns:
-        return pd.DataFrame(columns=columns)
+        return pd.DataFrame(columns=TREND_COLUMNS)
 
     prepared = add_event_time(frame)
     prepared = prepared[prepared["_event_time"].notna()].copy()
     if prepared.empty:
-        return pd.DataFrame(columns=columns)
+        return pd.DataFrame(columns=TREND_COLUMNS)
 
     period_frequency = FREQUENCIES.get(frequency, FREQUENCIES["Day"])
     local_time = prepared["_event_time"].dt.tz_convert(None)
@@ -82,33 +82,75 @@ def build_sentiment_trends(
         .str.lower()
     )
 
-    rows: list[dict[str, object]] = []
-    for period, group in prepared.groupby("_period", sort=True):
-        count = len(group)
-        row: dict[str, object] = {
-            "period": period,
-            "comment_count": int(count),
-        }
-        for label in ("negative", "neutral", "positive"):
-            row[f"{label}_percent"] = round(
-                float(group["_label"].eq(label).mean() * 100),
-                1,
-            )
-        if "is_sarcastic" in group.columns:
-            sarcasm = group["is_sarcastic"]
-            if sarcasm.dtype != bool:
-                sarcasm = sarcasm.fillna(False).astype(str).str.lower().isin({"true", "1", "yes"})
-            row["sarcasm_percent"] = round(float(sarcasm.mean() * 100), 1)
-        else:
-            row["sarcasm_percent"] = 0.0
+    rows = [
+        _summarize_group(group, label_column="_label", period=period)
+        for period, group in prepared.groupby("_period", sort=True)
+    ]
+    return pd.DataFrame(rows, columns=TREND_COLUMNS)
 
-        for column in EMOTION_COLUMNS:
-            row[column] = round(
-                float(pd.to_numeric(group[column], errors="coerce").fillna(0).mean()),
-                3,
-            ) if column in group.columns else 0.0
-        rows.append(row)
-    return pd.DataFrame(rows, columns=columns)
+
+def _summarize_group(
+    group: pd.DataFrame,
+    *,
+    label_column: str,
+    period: object,
+) -> dict[str, object]:
+    count = len(group)
+    labels = group[label_column].fillna("unknown").astype(str).str.strip().str.lower()
+    row: dict[str, object] = {"period": period, "comment_count": int(count)}
+    for label in ("negative", "neutral", "positive"):
+        row[f"{label}_percent"] = round(float(labels.eq(label).mean() * 100), 1)
+
+    if "is_sarcastic" in group.columns:
+        sarcasm = group["is_sarcastic"]
+        if sarcasm.dtype != bool:
+            sarcasm = sarcasm.fillna(False).astype(str).str.lower().isin({"true", "1", "yes"})
+        row["sarcasm_percent"] = round(float(sarcasm.mean() * 100), 1)
+    else:
+        row["sarcasm_percent"] = 0.0
+
+    for column in EMOTION_COLUMNS:
+        row[column] = (
+            round(float(pd.to_numeric(group[column], errors="coerce").fillna(0).mean()), 3)
+            if column in group.columns
+            else 0.0
+        )
+    return row
+
+
+def build_comment_progression(
+    frame: pd.DataFrame,
+    *,
+    segments: int = 6,
+    label_column: str = "corrected_label",
+) -> pd.DataFrame:
+    """Aggregate sentiment across ordered comment groups when time resolution is limited."""
+    if frame.empty or label_column not in frame.columns:
+        return pd.DataFrame(columns=TREND_COLUMNS)
+
+    prepared = add_event_time(frame).reset_index(drop=True)
+    prepared["_source_order"] = range(len(prepared))
+    if prepared["_event_time"].nunique(dropna=True) > 1:
+        prepared = prepared.sort_values(
+            ["_event_time", "_source_order"],
+            kind="stable",
+            na_position="last",
+        ).reset_index(drop=True)
+
+    group_count = max(1, min(int(segments), len(prepared)))
+    prepared["_segment"] = [index * group_count // len(prepared) for index in range(len(prepared))]
+    rows: list[dict[str, object]] = []
+    for segment, group in prepared.groupby("_segment", sort=True):
+        start = int(group.index.min()) + 1
+        end = int(group.index.max()) + 1
+        rows.append(
+            _summarize_group(
+                group,
+                label_column=label_column,
+                period=f"Comments {start}-{end}",
+            )
+        )
+    return pd.DataFrame(rows, columns=TREND_COLUMNS)
 
 
 def describe_negative_trend(trends: pd.DataFrame) -> str:
@@ -125,3 +167,18 @@ def describe_negative_trend(trends: pd.DataFrame) -> str:
         return f"Negative sentiment remained broadly stable ({change:+.1f} percentage points)."
     direction = "increased" if change > 0 else "decreased"
     return f"Negative sentiment {direction} by {abs(change):.1f} percentage points across the selected period."
+
+
+def describe_comment_progression(progression: pd.DataFrame) -> str:
+    """Describe negative sentiment movement between the first and last comment groups."""
+    if progression.empty:
+        return "There are not enough comments to calculate discussion progression."
+    if len(progression) < 2:
+        return "Only one comment group is available, so movement cannot be estimated."
+    first = float(progression.iloc[0]["negative_percent"])
+    last = float(progression.iloc[-1]["negative_percent"])
+    change = round(last - first, 1)
+    if abs(change) < 2:
+        return f"Negative sentiment stayed broadly stable across the discussion ({change:+.1f} points)."
+    direction = "rose" if change > 0 else "fell"
+    return f"Negative sentiment {direction} by {abs(change):.1f} points from the first to last comment group."

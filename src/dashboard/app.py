@@ -6,6 +6,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
@@ -19,6 +20,7 @@ from src.insights.policy_report import (
     build_policy_recommendations,
     build_stakeholder_report,
 )
+from src.insights.pdf_report import build_executive_summary_pdf
 from src.insights.topic_analyzer import (
     EMOTION_COLUMNS,
     add_topic_labels,
@@ -26,7 +28,9 @@ from src.insights.topic_analyzer import (
 )
 from src.temporal.event_tracker import (
     add_event_time,
+    build_comment_progression,
     build_sentiment_trends,
+    describe_comment_progression,
     describe_negative_trend,
     find_timestamp_column,
 )
@@ -45,6 +49,131 @@ TOPIC_DISPLAY_NAMES = {
     "Environment and climate": "Environment & climate",
     "Other energy concerns": "Other energy concerns",
 }
+SENTIMENT_COLORS = {
+    "Negative": "#D94B4B",
+    "Neutral": "#9AA3AF",
+    "Positive": "#2E8B57",
+}
+EMOTION_COLORS = {
+    "Anger": "#D94B4B",
+    "Fear": "#7A5AF8",
+    "Trust": "#1F9D8A",
+    "Sadness": "#4C78A8",
+    "Hope": "#2E8B57",
+    "Frustration": "#E67E22",
+}
+
+
+def _inject_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        .block-container {max-width: 1180px; padding-top: 2.25rem; padding-bottom: 2rem;}
+        h1 {font-size: 2rem !important; line-height: 1.2 !important;}
+        h2 {font-size: 1.3rem !important; line-height: 1.3 !important;}
+        h3 {font-size: 1.08rem !important; line-height: 1.35 !important;}
+        [data-testid="stMetric"] {border-bottom: 2px solid #E6E9EE; padding-bottom: 0.65rem;}
+        [data-testid="stMetricValue"] {font-size: 1.42rem; line-height: 1.2; white-space: normal; overflow: visible;}
+        [data-testid="stMetricValue"] > div {white-space: normal; overflow: visible; text-overflow: clip;}
+        [data-testid="stMetricLabel"] {font-size: 0.82rem; color: #5F6B7A;}
+        [data-testid="stDataFrame"] {font-size: 0.86rem;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _compact_bar_chart(
+    frame: pd.DataFrame,
+    *,
+    category: str,
+    value: str,
+    height: int = 210,
+    horizontal: bool = False,
+    colors_by_category: dict[str, str] | None = None,
+    value_title: str | None = None,
+) -> None:
+    if frame.empty:
+        return
+    color = (
+        alt.Color(
+            f"{category}:N",
+            legend=None,
+            scale=alt.Scale(
+                domain=list(colors_by_category),
+                range=list(colors_by_category.values()),
+            ),
+        )
+        if colors_by_category
+        else alt.value("#267A78")
+    )
+    tooltip = [
+        alt.Tooltip(f"{category}:N", title=category.replace("_", " ").title()),
+        alt.Tooltip(f"{value}:Q", title=value_title or value.replace("_", " ").title()),
+    ]
+    if horizontal:
+        encoding = {
+            "x": alt.X(f"{value}:Q", title=value_title, axis=alt.Axis(grid=True, tickCount=5)),
+            "y": alt.Y(
+                f"{category}:N",
+                title=None,
+                sort="-x",
+                axis=alt.Axis(labelLimit=190),
+            ),
+        }
+    else:
+        encoding = {
+            "x": alt.X(f"{category}:N", title=None, sort=None, axis=alt.Axis(labelAngle=0)),
+            "y": alt.Y(f"{value}:Q", title=value_title, axis=alt.Axis(grid=True, tickCount=5)),
+        }
+    chart = (
+        alt.Chart(frame)
+        .mark_bar(size=30, cornerRadius=3)
+        .encode(**encoding, color=color, tooltip=tooltip)
+        .properties(height=height)
+    )
+    st.altair_chart(chart, width="stretch")
+
+
+def _compact_line_chart(
+    frame: pd.DataFrame,
+    *,
+    value_columns: list[str],
+    labels: dict[str, str],
+    colors: dict[str, str],
+    temporal: bool,
+    value_title: str,
+    height: int = 230,
+) -> None:
+    if frame.empty or not value_columns:
+        return
+    chart_data = frame[["period", *value_columns]].melt(
+        id_vars="period",
+        var_name="series",
+        value_name="value",
+    )
+    chart_data["series"] = chart_data["series"].map(labels).fillna(chart_data["series"])
+    x_type = "T" if temporal else "N"
+    chart = (
+        alt.Chart(chart_data)
+        .mark_line(point=alt.OverlayMarkDef(size=48), strokeWidth=2.2)
+        .encode(
+            x=alt.X(f"period:{x_type}", title=None, sort=None, axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("value:Q", title=value_title, axis=alt.Axis(grid=True, tickCount=5)),
+            color=alt.Color(
+                "series:N",
+                title=None,
+                scale=alt.Scale(domain=list(colors), range=list(colors.values())),
+            ),
+            tooltip=[
+                alt.Tooltip(f"period:{x_type}", title="Group" if not temporal else "Period"),
+                alt.Tooltip("series:N", title="Measure"),
+                alt.Tooltip("value:Q", title=value_title, format=".2f"),
+            ],
+        )
+        .properties(height=height)
+    )
+    st.altair_chart(chart, width="stretch")
 
 
 def _boolean_series(values: pd.Series) -> pd.Series:
@@ -172,16 +301,28 @@ def _render_overview(
         if sentiment.empty:
             st.info("No sentiment labels are available for this selection.")
         else:
-            st.bar_chart(sentiment.set_index("sentiment")[["comments"]])
-            st.dataframe(sentiment, width="stretch", hide_index=True)
+            _compact_bar_chart(
+                sentiment,
+                category="sentiment",
+                value="comments",
+                colors_by_category=SENTIMENT_COLORS,
+                value_title="Comments",
+            )
 
     with emotion_column:
         st.subheader("Emotion Index")
         if emotions.empty:
             st.info("No emotion scores are available for this selection.")
         else:
-            st.bar_chart(emotions.set_index("emotion")[["average_score"]])
-            st.dataframe(emotions, width="stretch", hide_index=True)
+            _compact_bar_chart(
+                emotions,
+                category="emotion",
+                value="average_score",
+                height=210,
+                horizontal=True,
+                colors_by_category=EMOTION_COLORS,
+                value_title="Average score",
+            )
 
     st.subheader("Priority Considerations")
     if recommendations.empty:
@@ -193,40 +334,91 @@ def _render_overview(
 
 
 def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
-    frequency = st.radio(
-        "Time grouping",
-        options=["Day", "Week", "Month"],
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-    trends = build_sentiment_trends(
-        frame,
-        frequency=frequency,
-        label_column=label_column,
-    )
+    daily = build_sentiment_trends(frame, frequency="Day", label_column=label_column)
+    progression = build_comment_progression(frame, label_column=label_column)
+    has_calendar_trend = len(daily) >= 2
+    if has_calendar_trend:
+        basis = st.segmented_control(
+            "Trend basis",
+            options=["Calendar time", "Comment progression"],
+            default="Calendar time",
+        )
+    else:
+        basis = "Comment progression"
+        st.info(
+            "Facebook supplied only one calendar period, so movement is shown across ordered "
+            "comment groups instead. These groups show discussion progression, not elapsed time."
+        )
+
+    if basis == "Calendar time":
+        frequency = st.segmented_control(
+            "Time grouping",
+            options=["Day", "Week", "Month"],
+            default="Day",
+        )
+        trends = build_sentiment_trends(
+            frame,
+            frequency=str(frequency),
+            label_column=label_column,
+        )
+        temporal = True
+        st.caption(describe_negative_trend(trends))
+        sentiment_heading = "Sentiment Over Time"
+    else:
+        trends = progression
+        temporal = False
+        st.caption(describe_comment_progression(trends))
+        sentiment_heading = "Sentiment Across the Discussion"
+
     if trends.empty:
-        st.info("No valid comment timestamps are available for trend analysis.")
+        st.info("There are not enough valid comments to calculate movement.")
         return
 
-    st.caption(describe_negative_trend(trends))
-    chart_data = trends.set_index("period")
-    st.subheader("Sentiment Over Time")
-    st.line_chart(
-        chart_data[["negative_percent", "neutral_percent", "positive_percent"]]
+    st.subheader(sentiment_heading)
+    _compact_line_chart(
+        trends,
+        value_columns=["negative_percent", "neutral_percent", "positive_percent"],
+        labels={
+            "negative_percent": "Negative",
+            "neutral_percent": "Neutral",
+            "positive_percent": "Positive",
+        },
+        colors=SENTIMENT_COLORS,
+        temporal=temporal,
+        value_title="Share of comments (%)",
     )
 
     volume_column, emotion_column = st.columns([0.8, 1.2])
     with volume_column:
         st.subheader("Comment Volume")
-        st.bar_chart(chart_data[["comment_count"]])
+        _compact_bar_chart(
+            trends,
+            category="period",
+            value="comment_count",
+            height=190,
+            value_title="Comments",
+        )
     with emotion_column:
         st.subheader("Emotion Movement")
         emotion_columns = [
             column
             for column in ("nrc_frustration", "nrc_anger", "nrc_hope", "nrc_trust")
-            if column in chart_data.columns
+            if column in trends.columns
         ]
-        st.line_chart(chart_data[emotion_columns])
+        _compact_line_chart(
+            trends,
+            value_columns=emotion_columns,
+            labels={column: column.removeprefix("nrc_").title() for column in emotion_columns},
+            colors={
+                column.removeprefix("nrc_").title(): EMOTION_COLORS[
+                    column.removeprefix("nrc_").title()
+                ]
+                for column in emotion_columns
+            },
+            temporal=temporal,
+            value_title="Average score",
+            height=190,
+        )
 
     st.dataframe(
         trends.rename(
@@ -243,8 +435,8 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
         hide_index=True,
     )
     st.caption(
-        "Trend accuracy depends on the timestamps supplied by the Facebook collection source. "
-        "A single period is a snapshot, not evidence of change."
+        "Calendar trends depend on Facebook timestamps. Comment progression uses ordered groups "
+        "when timestamp resolution is insufficient and must not be interpreted as elapsed time."
     )
 
 
@@ -255,7 +447,14 @@ def _render_topics(frame: pd.DataFrame, topics: pd.DataFrame, label_column: str)
 
     topic_chart = topics[["topic", "comment_count"]].copy()
     topic_chart["topic"] = topic_chart["topic"].map(_display_topic)
-    st.bar_chart(topic_chart.set_index("topic")[["comment_count"]])
+    _compact_bar_chart(
+        topic_chart,
+        category="topic",
+        value="comment_count",
+        height=270,
+        horizontal=True,
+        value_title="Comments",
+    )
 
     topic_table = topics[
         [
@@ -304,14 +503,101 @@ def _render_topics(frame: pd.DataFrame, topics: pd.DataFrame, label_column: str)
     )
 
 
+def _comment_emotion_table(frame: pd.DataFrame, label_column: str) -> pd.DataFrame:
+    text_column = _text_column(frame)
+    if not text_column:
+        return pd.DataFrame()
+    table = pd.DataFrame({"Comment": frame[text_column].fillna("").astype(str)})
+    table["Sentiment"] = (
+        frame[label_column].fillna("unknown").astype(str).str.title()
+        if label_column
+        else "Unknown"
+    )
+    emotion_columns = [column for column in EMOTION_COLUMNS if column in frame.columns]
+    if emotion_columns:
+        numeric = frame[emotion_columns].apply(pd.to_numeric, errors="coerce").fillna(0)
+        dominant_column = numeric.idxmax(axis=1)
+        dominant_score = numeric.max(axis=1)
+        table["Dominant emotion"] = dominant_column.str.removeprefix("nrc_").str.title()
+        table.loc[dominant_score.le(0), "Dominant emotion"] = "No signal"
+        table["Emotion score %"] = (dominant_score * 100).round(1)
+        for column in emotion_columns:
+            table[f"{column.removeprefix('nrc_').title()} %"] = (numeric[column] * 100).round(1)
+    if "is_sarcastic" in frame.columns:
+        table["Sarcasm"] = _boolean_series(frame["is_sarcastic"]).map({True: "Yes", False: "No"})
+    evidence = frame.get("nrc_emotion_terms", pd.Series("", index=frame.index)).fillna("").astype(str)
+    local = frame.get("local_emotion_terms", pd.Series("", index=frame.index)).fillna("").astype(str)
+    table["Matched emotion words"] = evidence.where(local.eq(""), evidence + ", " + local)
+    table["Matched emotion words"] = table["Matched emotion words"].str.strip(" ,")
+    table["Positive emotion suppressed"] = (
+        _boolean_series(frame["positive_emotion_suppressed"]).map({True: "Yes", False: "No"})
+        if "positive_emotion_suppressed" in frame.columns
+        else "No"
+    )
+    return table
+
+
+def _render_comments(frame: pd.DataFrame, label_column: str) -> None:
+    comment_table = _comment_emotion_table(frame, label_column)
+    if comment_table.empty:
+        st.info("No comment-level emotion evidence is available.")
+        return
+
+    filter_column, sentiment_column = st.columns([1.4, 0.6])
+    with filter_column:
+        query = st.text_input("Search comments", placeholder="Search comment text")
+    with sentiment_column:
+        sentiment_options = ["All", *sorted(comment_table["Sentiment"].unique())]
+        selected_sentiment = st.selectbox("Sentiment", sentiment_options)
+
+    visible = comment_table.copy()
+    if query.strip():
+        visible = visible[visible["Comment"].str.contains(query.strip(), case=False, na=False)]
+    if selected_sentiment != "All":
+        visible = visible[visible["Sentiment"].eq(selected_sentiment)]
+
+    st.dataframe(
+        visible,
+        width="stretch",
+        hide_index=True,
+        height=390,
+        column_config={
+            "Comment": st.column_config.TextColumn(width="large"),
+            "Matched emotion words": st.column_config.TextColumn(width="large"),
+        },
+    )
+    st.download_button(
+        "Download comment emotion audit",
+        data=visible.to_csv(index=False).encode("utf-8"),
+        file_name=f"comment_emotion_audit_{datetime.now(timezone.utc):%Y%m%d}.csv",
+        mime="text/csv",
+    )
+    st.caption(
+        "Emotion values are lexical evidence scores from 0 to 100, not probabilities. "
+        "Matched words show why a score appeared; critical or sarcastic promise language "
+        "suppresses misleading hope and trust signals."
+    )
+
+
 def _render_report(frame: pd.DataFrame, source_label: str) -> None:
     report = build_stakeholder_report(frame, source_label=source_label)
-    st.download_button(
-        "Download stakeholder report",
-        data=report.encode("utf-8"),
-        file_name=f"zambian_energy_sentiment_report_{datetime.now(timezone.utc):%Y%m%d}.md",
-        mime="text/markdown",
-    )
+    pdf = build_executive_summary_pdf(frame, source_label=source_label)
+    pdf_column, detail_column = st.columns(2)
+    with pdf_column:
+        st.download_button(
+            "Download executive summary PDF",
+            data=pdf,
+            file_name=f"zambian_energy_executive_summary_{datetime.now(timezone.utc):%Y%m%d}.pdf",
+            mime="application/pdf",
+            type="primary",
+        )
+    with detail_column:
+        st.download_button(
+            "Download detailed report",
+            data=report.encode("utf-8"),
+            file_name=f"zambian_energy_sentiment_report_{datetime.now(timezone.utc):%Y%m%d}.md",
+            mime="text/markdown",
+        )
     st.markdown(report)
 
 
@@ -379,6 +665,7 @@ def main() -> None:
         page_title="Zambian Green Energy Sentiment",
         layout="wide",
     )
+    _inject_styles()
     st.title("Zambian Green Energy Sentiment")
     st.caption(
         "Public Facebook discourse on electricity reliability, affordability, renewable energy, "
@@ -410,13 +697,13 @@ def main() -> None:
     if flash:
         st.success(str(flash))
 
-    analyze_tab, overview_tab, trends_tab, topics_tab, report_tab = st.tabs(
-        ["Analyze URL", "Overview", "Trends", "Topics", "Report"]
+    analyze_tab, overview_tab, trends_tab, topics_tab, comments_tab, report_tab = st.tabs(
+        ["Analyze URL", "Overview", "Trends", "Topics", "Comments", "Report"]
     )
     with analyze_tab:
         _render_url_analysis()
 
-    result_tabs = (overview_tab, trends_tab, topics_tab, report_tab)
+    result_tabs = (overview_tab, trends_tab, topics_tab, comments_tab, report_tab)
     if filtered_data.empty:
         for tab in result_tabs:
             with tab:
@@ -446,6 +733,8 @@ def main() -> None:
         _render_trends(topic_data, label_column)
     with topics_tab:
         _render_topics(topic_data, topics, label_column)
+    with comments_tab:
+        _render_comments(topic_data, label_column)
     with report_tab:
         _render_report(topic_data, source_url)
 
