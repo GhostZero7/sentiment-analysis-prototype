@@ -109,6 +109,21 @@ def test_working_hours_business_impact_complaint_is_negative():
     assert "not making sense" in scores["local_correction_terms"]
 
 
+def test_failed_stability_promise_and_ransom_accusation_are_negative():
+    comment = (
+        "It's now like they are now holding the country at ransom. Busy lying and giving "
+        "us hope about stability of power in October which is still a mess same 3 hrs of "
+        "power. I don't think even when they get the increment things will change."
+    )
+    scores = get_vader_scores(comment)
+    assert scores["raw_label"] == "positive"
+    assert scores["label"] == "negative"
+    assert scores["corrected_compound"] < 0
+    assert scores["local_correction_applied"] is True
+    assert "holding the country at ransom" in scores["local_correction_terms"]
+    assert "still a mess" in scores["local_correction_terms"]
+
+
 def test_sentiment_text_prefers_original_over_stopword_processed_text():
     row = {
         "text_raw": "We don't have power.",
