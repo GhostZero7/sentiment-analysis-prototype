@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 
 import altair as alt
@@ -72,11 +73,14 @@ def _inject_styles() -> None:
         h1 {font-size: 2rem !important; line-height: 1.2 !important;}
         h2 {font-size: 1.3rem !important; line-height: 1.3 !important;}
         h3 {font-size: 1.08rem !important; line-height: 1.35 !important;}
-        [data-testid="stMetric"] {border-bottom: 2px solid #E6E9EE; padding-bottom: 0.65rem;}
-        [data-testid="stMetricValue"] {font-size: 1.42rem; line-height: 1.2; white-space: normal; overflow: visible;}
+        [data-testid="stMetric"] {border-bottom: 2px solid #E6E9EE; padding-bottom: 0.55rem; min-height: 4.15rem;}
+        [data-testid="stMetricValue"] {font-size: 1.28rem; line-height: 1.2; white-space: normal; overflow: visible;}
         [data-testid="stMetricValue"] > div {white-space: normal; overflow: visible; text-overflow: clip;}
         [data-testid="stMetricLabel"] {font-size: 0.82rem; color: #5F6B7A;}
         [data-testid="stDataFrame"] {font-size: 0.86rem;}
+        .dashboard-text-metric {border-bottom: 2px solid #E6E9EE; padding-bottom: 0.55rem; min-height: 4.15rem;}
+        .dashboard-text-metric-label {font-size: 0.82rem; color: #5F6B7A; margin-bottom: 0.35rem;}
+        .dashboard-text-metric-value {font-size: 1.05rem; font-weight: 600; line-height: 1.25; color: #172033; overflow-wrap: anywhere;}
         </style>
         """,
         unsafe_allow_html=True,
@@ -88,7 +92,8 @@ def _compact_bar_chart(
     *,
     category: str,
     value: str,
-    height: int = 210,
+    height: int = 175,
+    bar_size: int = 20,
     horizontal: bool = False,
     colors_by_category: dict[str, str] | None = None,
     value_title: str | None = None,
@@ -128,11 +133,21 @@ def _compact_bar_chart(
         }
     chart = (
         alt.Chart(frame)
-        .mark_bar(size=30, cornerRadius=3)
+        .mark_bar(size=bar_size, cornerRadius=3)
         .encode(**encoding, color=color, tooltip=tooltip)
         .properties(height=height)
     )
     st.altair_chart(chart, width="stretch")
+
+
+def _text_metric(container, label: str, value: str) -> None:
+    container.markdown(
+        '<div class="dashboard-text-metric">'
+        f'<div class="dashboard-text-metric-label">{escape(label)}</div>'
+        f'<div class="dashboard-text-metric-value">{escape(value)}</div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _compact_line_chart(
@@ -292,8 +307,8 @@ def _render_overview(
     metric_columns = st.columns(4)
     metric_columns[0].metric("Comments analyzed", f"{len(frame):,}")
     metric_columns[1].metric("Negative sentiment", f"{_metric_percent(sentiment, 'Negative'):.1f}%")
-    metric_columns[2].metric("Top topic", top_topic)
-    metric_columns[3].metric("Leading emotion", leading_emotion)
+    _text_metric(metric_columns[2], "Top topic", top_topic)
+    _text_metric(metric_columns[3], "Leading emotion", leading_emotion)
 
     sentiment_column, emotion_column = st.columns(2)
     with sentiment_column:
@@ -305,6 +320,8 @@ def _render_overview(
                 sentiment,
                 category="sentiment",
                 value="comments",
+                height=165,
+                bar_size=18,
                 colors_by_category=SENTIMENT_COLORS,
                 value_title="Comments",
             )
@@ -318,7 +335,8 @@ def _render_overview(
                 emotions,
                 category="emotion",
                 value="average_score",
-                height=210,
+                height=165,
+                bar_size=16,
                 horizontal=True,
                 colors_by_category=EMOTION_COLORS,
                 value_title="Average score",
@@ -451,7 +469,8 @@ def _render_topics(frame: pd.DataFrame, topics: pd.DataFrame, label_column: str)
         topic_chart,
         category="topic",
         value="comment_count",
-        height=270,
+        height=215,
+        bar_size=16,
         horizontal=True,
         value_title="Comments",
     )
@@ -487,15 +506,32 @@ def _render_topics(frame: pd.DataFrame, topics: pd.DataFrame, label_column: str)
     text_column = _text_column(frame)
     if text_column:
         topic_comments = frame[frame["topic"].eq(selected_topic)].copy()
-        sample_columns = [text_column]
-        if label_column:
-            sample_columns.append(label_column)
-        if "source_url" in topic_comments.columns:
-            sample_columns.append("source_url")
+        comment_audit = _comment_emotion_table(topic_comments, label_column)
+        sample_columns = [
+            column
+            for column in (
+                "Comment",
+                "Topic",
+                "Sentiment",
+                "Dominant emotion",
+                "Emotion score %",
+                "Trust %",
+                "Hope %",
+                "Frustration %",
+                "Matched emotion words",
+            )
+            if column in comment_audit.columns
+        ]
         st.dataframe(
-            topic_comments[sample_columns].head(30),
+            comment_audit[sample_columns].head(30),
             width="stretch",
             hide_index=True,
+            height=360,
+            column_config={
+                "Comment": st.column_config.TextColumn(width="large"),
+                "Topic": st.column_config.TextColumn(width="medium"),
+                "Matched emotion words": st.column_config.TextColumn(width="large"),
+            },
         )
     st.caption(
         "Topics use a transparent Zambia-energy keyword taxonomy. Comments receive one primary "
@@ -508,6 +544,8 @@ def _comment_emotion_table(frame: pd.DataFrame, label_column: str) -> pd.DataFra
     if not text_column:
         return pd.DataFrame()
     table = pd.DataFrame({"Comment": frame[text_column].fillna("").astype(str)})
+    if "topic" in frame.columns:
+        table["Topic"] = frame["topic"].fillna("Other energy concerns").astype(str).map(_display_topic)
     table["Sentiment"] = (
         frame[label_column].fillna("unknown").astype(str).str.title()
         if label_column
