@@ -48,17 +48,17 @@ def test_batch_skips_existing_and_enforces_limit(tmp_path, monkeypatch):
     assert len(pd.read_csv(tmp_path / "comments_post_222.csv")) == 300
 
 
-def test_batch_rejects_limit_above_300(tmp_path):
-    with pytest.raises(ValueError, match="between 1 and 300"):
+def test_batch_rejects_limit_above_1000(tmp_path):
+    with pytest.raises(ValueError, match="between 1 and 1000"):
         download_batch.collect_batch(
             ["https://www.facebook.com/page/posts/222/"],
-            limit=301,
+            limit=1001,
             output_dir=tmp_path,
             manifest_path=tmp_path / "manifest.csv",
         )
 
 
-def test_shared_apify_client_caps_every_request_at_300(monkeypatch):
+def test_shared_apify_client_caps_every_request_at_1000(monkeypatch):
     captured: dict[str, object] = {}
 
     class DummyActor:
@@ -73,6 +73,7 @@ def test_shared_apify_client_caps_every_request_at_300(monkeypatch):
                     "commentId": "1",
                     "text": "@Zesco Power restored",
                     "date": "2026-01-01",
+                    "postTitle": "Power restoration update",
                     "threadingDepth": 0,
                 },
                 {
@@ -106,10 +107,12 @@ def test_shared_apify_client_caps_every_request_at_300(monkeypatch):
     )
 
     assert len(rows) == 1
-    assert captured["run_input"]["resultsLimit"] == 300
+    assert captured["run_input"]["resultsLimit"] == 1000
     assert captured["run_input"]["includeNestedComments"] is False
     assert rows[0]["text"] == "Power restored"
     assert rows[0]["timestamp"] == "2026-01-01"
+    assert rows[0]["post_title"] == "Power restoration update"
+    assert rows[0]["collected_at"]
 
 
 def test_apify_client_rejects_parent_linked_reply_and_strips_structured_mention():
@@ -136,3 +139,20 @@ def test_apify_client_rejects_parent_linked_reply_and_strips_structured_mention(
     assert row is not None
     assert row["text"] == "please restore power"
     assert row["timestamp"] == "2026-01-01T10:00:00Z"
+
+
+def test_apify_client_does_not_invent_missing_comment_time_and_keeps_title():
+    row = apify_client._normalise_item(
+        {
+            "commentId": "comment-2",
+            "text": "Public reaction",
+            "postTitle": "New solar project announced",
+            "threadingDepth": 0,
+        },
+        "https://www.facebook.com/page/posts/123/",
+    )
+
+    assert row is not None
+    assert row["timestamp"] == ""
+    assert row["post_title"] == "New solar project announced"
+    assert row["collected_at"]

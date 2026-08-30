@@ -30,6 +30,12 @@ LIVE_RESULTS_DIR = DATA_DIR / "results" / "url_analyses"
 LIVE_LABELED_DIR = DATA_DIR / "processed" / "labeled"
 LIVE_HISTORY_PATH = LIVE_LABELED_DIR / "url_analysis_history.csv"
 LIVE_TRAINING_CANDIDATES_PATH = LIVE_LABELED_DIR / "url_training_candidates.csv"
+COMMENT_METADATA_COLUMNS = (
+    "post_title",
+    "collected_at",
+    "first_seen_at",
+    "last_seen_at",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,14 +72,21 @@ def _normalise_cached_frame(
         cached["comment_id"] = [f"cached-{index}" for index in range(len(cached))]
     if "timestamp" not in cached.columns:
         cached["timestamp"] = ""
+    for column in COMMENT_METADATA_COLUMNS:
+        if column not in cached.columns:
+            cached[column] = ""
     cached["comment_id"] = cached["comment_id"].fillna("").astype(str)
     cached["timestamp"] = cached["timestamp"].fillna("").astype(str)
+    for column in COMMENT_METADATA_COLUMNS:
+        cached[column] = cached[column].fillna("").astype(str)
     cached["source_url"] = source_url
     cached = cached.drop_duplicates(subset=["comment_id", "text"], keep="first")
     available_rows = int(len(cached))
     selected = cached.head(max_comments)
     return (
-        selected[["comment_id", "text", "timestamp", "source_url"]].to_dict("records"),
+        selected[
+            ["comment_id", "text", "timestamp", "source_url", *COMMENT_METADATA_COLUMNS]
+        ].to_dict("records"),
         available_rows,
     )
 
@@ -240,6 +253,129 @@ def _prepare_comments_frame(comments: list[dict[str, Any]]) -> pd.DataFrame:
     return raw.drop_duplicates(subset=[column for column in ["comment_id", "text", "source_url"] if column in raw.columns])
 
 
+def _comment_key(comment: dict[str, Any]) -> tuple[str, ...]:
+    comment_id = str(comment.get("comment_id", "")).strip()
+    if comment_id:
+        return ("id", comment_id)
+    return (
+        "content",
+        str(comment.get("text", "")).strip().casefold(),
+        str(comment.get("timestamp", "")).strip(),
+    )
+
+
+def _merge_comment_record(
+    previous: dict[str, Any],
+    current: dict[str, Any],
+) -> dict[str, Any]:
+    merged = dict(previous)
+    for key, value in current.items():
+        if value is not None and str(value).strip():
+            merged[key] = value
+
+    previous_first_seen = str(
+        previous.get("first_seen_at") or previous.get("collected_at") or ""
+    ).strip()
+    current_seen = str(
+        current.get("last_seen_at") or current.get("collected_at") or ""
+    ).strip()
+    merged["first_seen_at"] = previous_first_seen or current_seen
+    merged["last_seen_at"] = current_seen or str(
+        previous.get("last_seen_at") or previous.get("collected_at") or ""
+    ).strip()
+    return merged
+
+
+def _initial_seen_record(comment: dict[str, Any]) -> dict[str, Any]:
+    record = dict(comment)
+    seen_at = str(record.get("collected_at", "")).strip()
+    if not str(record.get("first_seen_at", "")).strip():
+        record["first_seen_at"] = seen_at
+    if not str(record.get("last_seen_at", "")).strip():
+        record["last_seen_at"] = seen_at
+    return record
+
+
+def merge_tracked_comments(
+    previous: list[dict[str, Any]],
+    current: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> tuple[list[dict[str, Any]], int]:
+    """Merge a refreshed discussion with its cache and retain the newest requested rows."""
+    by_key: dict[tuple[str, ...], dict[str, Any]] = {}
+    order: list[tuple[str, ...]] = []
+    for comment in previous:
+        key = _comment_key(comment)
+        if key not in by_key:
+            order.append(key)
+            by_key[key] = _initial_seen_record(comment)
+        else:
+            by_key[key] = _merge_comment_record(by_key[key], comment)
+
+    previous_keys = set(by_key)
+    for comment in current:
+        key = _comment_key(comment)
+        if key not in by_key:
+            order.append(key)
+            by_key[key] = _initial_seen_record(comment)
+        else:
+            by_key[key] = _merge_comment_record(by_key[key], comment)
+
+    records = [by_key[key] for key in order]
+    if records:
+        frame = pd.DataFrame(records)
+        frame["_source_order"] = range(len(frame))
+        frame["_comment_time"] = pd.to_datetime(
+            frame.get("timestamp", pd.Series("", index=frame.index)),
+            errors="coerce",
+            utc=True,
+        )
+        frame = frame.sort_values(
+            ["_comment_time", "_source_order"],
+            kind="stable",
+            na_position="first",
+        ).tail(max(1, min(int(limit), MAX_COMMENTS_PER_URL)))
+        records = frame.drop(columns=["_source_order", "_comment_time"]).to_dict("records")
+
+    title = next(
+        (
+            str(record.get("post_title", "")).strip()
+            for record in records
+            if str(record.get("post_title", "")).strip()
+        ),
+        "",
+    )
+    if title:
+        for record in records:
+            record["post_title"] = title
+    return records, len({_comment_key(row) for row in current} - previous_keys)
+
+
+def _comments_up_to(
+    comments: list[dict[str, Any]],
+    cutoff: datetime,
+) -> list[dict[str, Any]]:
+    cutoff_value = pd.Timestamp(cutoff)
+    included: list[dict[str, Any]] = []
+    for comment in comments:
+        timestamp = pd.to_datetime(comment.get("timestamp", ""), errors="coerce", utc=True)
+        if pd.isna(timestamp) or timestamp <= cutoff_value:
+            included.append(comment)
+    return included
+
+
+def _post_title(comments: list[dict[str, Any]]) -> str:
+    return next(
+        (
+            str(comment.get("post_title", "")).strip()
+            for comment in comments
+            if str(comment.get("post_title", "")).strip()
+        ),
+        "",
+    )
+
+
 def analyze_comments_frame(
     comments: list[dict[str, Any]],
     *,
@@ -334,12 +470,15 @@ def analyze_facebook_url(
     *,
     models_dir: str | Path,
     max_comments: int = 300,
+    force_refresh: bool = False,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Analyze cached comments first, using Apify only for unseen URLs."""
+    """Analyze a URL, optionally refreshing and merging it for trend tracking."""
     max_comments = min(max(int(max_comments), 1), MAX_COMMENTS_PER_URL)
     source_url = canonical_facebook_url(url)
+    cutoff = datetime.now(timezone.utc)
     cached = load_cached_comments(source_url, max_comments=max_comments)
-    if cached:
+    new_comment_count = 0
+    if cached and not force_refresh:
         comments = cached.comments
         raw_path = str(cached.path)
         cache_path = str(cached.path)
@@ -347,12 +486,19 @@ def analyze_facebook_url(
         cache_hit = True
         cache_rows_available = cached.available_rows
     else:
-        comments = fetch_comments(source_url, max_comments=max_comments)
-        raw_path = save_raw_fetch(comments, source_url=source_url)
+        fetched = fetch_comments(source_url, max_comments=max_comments)
+        raw_path = save_raw_fetch(fetched, source_url=source_url)
+        previous = cached.comments if cached else []
+        comments, new_comment_count = merge_tracked_comments(
+            previous,
+            fetched,
+            limit=max_comments,
+        )
         cache_path = save_post_cache(comments, source_url=source_url)
-        collection_source = "apify"
+        collection_source = "apify_refresh" if force_refresh and cached else "apify"
         cache_hit = False
-        cache_rows_available = 0
+        cache_rows_available = cached.available_rows if cached else 0
+    comments = _comments_up_to(comments, cutoff)
     analyzed = analyze_comments_frame(
         comments,
         source_url=source_url,
@@ -366,18 +512,25 @@ def analyze_facebook_url(
     save_summary["cache_rows_available"] = cache_rows_available
     save_summary["collection_source"] = collection_source
     save_summary["fetched_rows"] = len(comments)
+    save_summary["new_comment_rows"] = new_comment_count
     save_summary["analyzed_rows"] = int(len(analyzed))
     save_summary["relevant_rows"] = int(analyzed["is_relevant"].fillna(False).sum()) if not analyzed.empty else 0
+    save_summary["source_url"] = source_url
+    save_summary["post_title"] = _post_title(comments)
+    save_summary["trend_cutoff"] = cutoff.isoformat()
+    save_summary["tracking_refresh"] = bool(force_refresh)
     link_registry = _save_link_record(
         {
             "source_url": source_url,
             "content_id": facebook_content_id(source_url) or "",
+            "post_title": save_summary["post_title"],
             "url_hash": _url_hash(source_url),
             "last_analyzed_at": datetime.now(timezone.utc).isoformat(),
             "collection_source": collection_source,
             "cache_hit": cache_hit,
             "cache_path": cache_path,
             "cache_rows_available": cache_rows_available,
+            "new_comment_rows": new_comment_count,
             "fetched_rows": save_summary["fetched_rows"],
             "analyzed_rows": save_summary["analyzed_rows"],
             "relevant_rows": save_summary["relevant_rows"],

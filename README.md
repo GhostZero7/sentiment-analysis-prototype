@@ -64,7 +64,7 @@ python scripts/collection/download_batch.py --urls-file data/raw/source_urls_new
 The batch collector identifies posts by their Facebook post/video ID, skips existing
 `comments_post_<id>.csv` files before calling Apify, and writes an audit trail to
 `data/raw/collection_manifest.csv`. The shared Apify client enforces a hard maximum of
-300 comments per URL, even if a larger value is supplied by another caller. Collection
+1,000 comments per URL, even if a larger value is supplied by another caller. Collection
 is limited to top-level comments: replies are disabled in the actor request and rejected
 again from returned rows using thread-depth and parent-comment fields. Profile names are
 not stored, and structured or `@` mentions are removed from comment text.
@@ -149,20 +149,25 @@ The dashboard can now fetch and analyze a public Facebook post URL:
 streamlit run src/dashboard/app.py
 ```
 
-In the dashboard, paste a Facebook URL, choose a fetch limit, and click **Analyze public comments**.
+In the dashboard, paste a Facebook URL, choose between 10 and 1,000 comments, and click
+**Analyze public comments**. Use **Track trend** to refresh a discussion, merge newly
+discovered comments with its cache, and analyze movement through the refresh time.
 
 Before calling Apify, the dashboard extracts the Facebook post/video ID and checks for
 `data/raw/comments_post_<id>.csv`, prior dashboard raw fetches, and the combined raw
 dataset. A cache hit is analyzed locally and uses no Apify tokens. A new Apify fetch is
 also saved as a canonical per-post cache for future reuse. Both live and cached analysis
-are hard-capped at 300 comments per URL.
+are hard-capped at 1,000 comments per URL. Post titles are retained when Facebook makes
+them available.
 
-The dashboard provides five end-user views:
+The dashboard provides six end-user views:
 
 - **Analyze URL** for collecting and analyzing a public Facebook discussion
 - **Overview** for sentiment, emotions, dominant topics, and priority considerations
-- **Trends** for sentiment, volume, emotion, and sarcasm movement
+- **Trends** for automatic or user-selected hour/day/week/month grouping, sentiment,
+  volume, emotion, sarcasm movement, and evidence-backed discussion-event explanations
 - **Topics** for explainable thematic grouping and representative comments
+- **Comments** for comment-level sentiment and emotion evidence
 - **Report** for a downloadable stakeholder briefing
 
 The end-user dashboard is URL-only. It does not expose the research corpus or saved

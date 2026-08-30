@@ -215,7 +215,7 @@ def build_stakeholder_report(
     label_column = "corrected_label" if "corrected_label" in frame.columns else "label"
     labeled = frame if "topic" in frame.columns else add_topic_labels(frame)
     topics = summarize_topics(labeled, label_column=label_column)
-    trends = build_sentiment_trends(labeled, frequency="Day", label_column=label_column)
+    trends = build_sentiment_trends(labeled, frequency="Automatic", label_column=label_column)
     progression = build_comment_progression(labeled, label_column=label_column)
     if len(trends) >= 2:
         movement_summary = describe_negative_trend(trends)

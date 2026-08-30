@@ -31,9 +31,11 @@ from src.temporal.event_tracker import (
     add_event_time,
     build_comment_progression,
     build_sentiment_trends,
+    build_trend_events,
     describe_comment_progression,
     describe_negative_trend,
     find_timestamp_column,
+    resolve_trend_frequency,
 )
 
 
@@ -352,9 +354,14 @@ def _render_overview(
 
 
 def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
-    daily = build_sentiment_trends(frame, frequency="Day", label_column=label_column)
+    automatic_frequency = resolve_trend_frequency(frame)
+    automatic = build_sentiment_trends(
+        frame,
+        frequency="Automatic",
+        label_column=label_column,
+    )
     progression = build_comment_progression(frame, label_column=label_column)
-    has_calendar_trend = len(daily) >= 2
+    has_calendar_trend = len(automatic) >= 2
     if has_calendar_trend:
         basis = st.segmented_control(
             "Trend basis",
@@ -371,8 +378,11 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
     if basis == "Calendar time":
         frequency = st.segmented_control(
             "Time grouping",
-            options=["Day", "Week", "Month"],
-            default="Day",
+            options=["Automatic", "Hour", "Day", "Week", "Month"],
+            default="Automatic",
+        )
+        resolved_frequency = (
+            automatic_frequency if frequency == "Automatic" else str(frequency)
         )
         trends = build_sentiment_trends(
             frame,
@@ -380,11 +390,14 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
             label_column=label_column,
         )
         temporal = True
+        if frequency == "Automatic":
+            st.caption(f"Automatic grouping selected: {automatic_frequency}.")
         st.caption(describe_negative_trend(trends))
         sentiment_heading = "Sentiment Over Time"
     else:
         trends = progression
         temporal = False
+        resolved_frequency = ""
         st.caption(describe_comment_progression(trends))
         sentiment_heading = "Sentiment Across the Discussion"
 
@@ -452,6 +465,41 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
         width="stretch",
         hide_index=True,
     )
+    if temporal:
+        st.subheader("What May Explain the Movement")
+        events = build_trend_events(
+            frame,
+            trends,
+            frequency=resolved_frequency,
+            label_column=label_column,
+        )
+        if events.empty:
+            st.info(
+                "No strong period-to-period change was detected. More timestamped comments may "
+                "be needed before discussion events can be identified."
+            )
+        else:
+            event_table = events.rename(
+                columns={
+                    "period": "Period",
+                    "movement": "Detected movement",
+                    "evidence": "Discussion evidence",
+                    "representative_comment": "Representative public comment",
+                }
+            )
+            st.dataframe(
+                event_table,
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "Discussion evidence": st.column_config.TextColumn(width="large"),
+                    "Representative public comment": st.column_config.TextColumn(width="large"),
+                },
+            )
+            st.caption(
+                "These are discussion events inferred from comment timing, volume, topics, and "
+                "emotions. They indicate association, not verified real-world causation."
+            )
     st.caption(
         "Calendar trends depend on Facebook timestamps. Comment progression uses ordered groups "
         "when timestamp resolution is insufficient and must not be interpreted as elapsed time."
@@ -641,26 +689,47 @@ def _render_report(frame: pd.DataFrame, source_label: str) -> None:
 
 def _render_url_analysis() -> None:
     with st.form("facebook_url_analysis"):
-        facebook_url = st.text_input("Public Facebook post URL")
-        max_comments = st.number_input(
-            "Maximum comments",
-            min_value=10,
-            max_value=300,
-            value=300,
-            step=10,
+        latest_summary = st.session_state.get("latest_live_summary")
+        current_url = (
+            str(latest_summary.get("source_url", ""))
+            if isinstance(latest_summary, dict)
+            else ""
         )
-        submitted = st.form_submit_button("Analyze public comments")
+        facebook_url = st.text_input("Public Facebook post URL", value=current_url)
+        max_comments = st.number_input(
+            "Comments to collect",
+            min_value=10,
+            max_value=1000,
+            value=300,
+            step=50,
+            help="Choose how many public top-level comments to collect, from 10 to 1,000.",
+        )
+        analyze_column, trend_column = st.columns(2)
+        with analyze_column:
+            submitted = st.form_submit_button("Analyze public comments", use_container_width=True)
+        with trend_column:
+            track_submitted = st.form_submit_button(
+                "Track trend",
+                type="primary",
+                use_container_width=True,
+            )
 
-    if submitted:
+    if submitted or track_submitted:
         if not facebook_url.strip():
             st.warning("Enter a public Facebook URL.")
             return
-        with st.spinner("Checking saved data, then collecting only if needed..."):
+        spinner_text = (
+            "Refreshing the discussion and merging new comments..."
+            if track_submitted
+            else "Checking saved data, then collecting only if needed..."
+        )
+        with st.spinner(spinner_text):
             try:
                 live_results, save_summary = analyze_facebook_url(
                     facebook_url.strip(),
                     models_dir=MODELS_DIR,
                     max_comments=int(max_comments),
+                    force_refresh=bool(track_submitted),
                 )
             except Exception as exc:
                 st.error(f"Analysis could not be completed: {exc}")
@@ -668,7 +737,13 @@ def _render_url_analysis() -> None:
 
         st.session_state["latest_live_results"] = live_results
         st.session_state["latest_live_summary"] = save_summary
-        if save_summary.get("cache_hit"):
+        if track_submitted:
+            st.session_state["_analysis_flash"] = (
+                f"Trend refreshed through {save_summary.get('trend_cutoff', 'now')}; "
+                f"{save_summary.get('new_comment_rows', 0):,} newly discovered comments were "
+                "merged with the saved discussion. Open the Trends tab to review movement."
+            )
+        elif save_summary.get("cache_hit"):
             st.session_state["_analysis_flash"] = (
                 f"Loaded {save_summary['fetched_rows']:,} saved comments and analyzed them locally; "
                 "no Apify tokens were used."
@@ -682,6 +757,11 @@ def _render_url_analysis() -> None:
 
     summary = st.session_state.get("latest_live_summary")
     if isinstance(summary, dict):
+        post_title = str(summary.get("post_title", "")).strip()
+        if post_title:
+            st.subheader(post_title)
+        else:
+            st.caption("Post title unavailable from Facebook.")
         if summary.get("cache_hit"):
             st.success("Loaded from the local dataset cache. No Apify tokens were used.")
         else:
@@ -690,6 +770,11 @@ def _render_url_analysis() -> None:
         result_columns[0].metric("Fetched", f"{summary.get('fetched_rows', 0):,}")
         result_columns[1].metric("Analyzed", f"{summary.get('analyzed_rows', 0):,}")
         result_columns[2].metric("Energy-relevant", f"{summary.get('relevant_rows', 0):,}")
+        if summary.get("tracking_refresh"):
+            st.caption(
+                f"Trend cutoff: {summary.get('trend_cutoff', 'current analysis time')} · "
+                f"New comments found: {summary.get('new_comment_rows', 0):,}"
+            )
 
     st.caption(
         "Saved comments are reused before Apify is called. Only publicly accessible comments are "
@@ -721,6 +806,9 @@ def main() -> None:
         else:
             filtered_data = _apply_sidebar_filters(raw_data)
             st.divider()
+            post_title = str(raw_data.iloc[0].get("post_title", "")).strip()
+            if post_title:
+                st.markdown(f"**{post_title}**")
             st.write(f"Comments in view: **{len(filtered_data):,}**")
             source_url = str(raw_data.iloc[0].get("source_url", "")).strip()
             if source_url:
@@ -764,6 +852,8 @@ def main() -> None:
         total_comments=len(topic_data),
     )
     source_url = str(topic_data.iloc[0].get("source_url", "Current URL"))
+    post_title = str(topic_data.iloc[0].get("post_title", "")).strip()
+    report_source = f"{post_title} — {source_url}" if post_title else source_url
 
     with overview_tab:
         _render_overview(topic_data, sentiment, emotions, topics, recommendations)
@@ -774,7 +864,7 @@ def main() -> None:
     with comments_tab:
         _render_comments(topic_data, label_column)
     with report_tab:
-        _render_report(topic_data, source_url)
+        _render_report(topic_data, report_source)
 
 
 if __name__ == "__main__":

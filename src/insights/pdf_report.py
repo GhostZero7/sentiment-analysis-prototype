@@ -171,7 +171,11 @@ def build_executive_summary_pdf(
         else "No strong signal"
     )
 
-    calendar_trends = build_sentiment_trends(labeled, frequency="Day", label_column=label_column)
+    calendar_trends = build_sentiment_trends(
+        labeled,
+        frequency="Automatic",
+        label_column=label_column,
+    )
     progression = build_comment_progression(labeled, label_column=label_column)
     if len(calendar_trends) >= 2:
         movement = describe_negative_trend(calendar_trends)

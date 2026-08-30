@@ -15,7 +15,7 @@ from apify_client import ApifyClient
 FACEBOOK_URL_PATTERN = re.compile(r"^https?://(www\.)?facebook\.com/", re.IGNORECASE)
 AT_MENTION_PATTERN = re.compile(r"@[\w.-]+", re.UNICODE)
 DEFAULT_ACTOR_ID = "apify/facebook-comments-scraper"
-MAX_COMMENTS_PER_URL = 300
+MAX_COMMENTS_PER_URL = 1_000
 
 
 class ApifyFetchError(RuntimeError):
@@ -179,7 +179,13 @@ def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any] | N
         or item.get("publishedAt")
         or item.get("createdAt")
         or item.get("created_time")
-        or _utc_now_iso()
+        or ""
+    )
+    post_title = (
+        item.get("postTitle")
+        or item.get("post_title")
+        or item.get("storyTitle")
+        or ""
     )
 
     return {
@@ -187,6 +193,8 @@ def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any] | N
         "text": text,
         "timestamp": str(timestamp),
         "source_url": source_url,
+        "post_title": str(post_title).strip(),
+        "collected_at": _utc_now_iso(),
     }
 
 
@@ -199,6 +207,8 @@ def fetch_comments(url: str, max_comments: int | None = None) -> list[dict[str, 
     - text
     - timestamp
     - source_url
+    - post_title
+    - collected_at
     """
     cleaned_url = _normalize_facebook_url((url or "").strip())
     if not validate_facebook_url(cleaned_url):

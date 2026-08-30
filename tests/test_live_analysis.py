@@ -177,7 +177,7 @@ def test_cached_post_is_loaded_by_content_id_and_respects_limit(tmp_path, monkey
     assert cached is not None
     assert cached.path == cached_path
     assert cached.available_rows == 325
-    assert len(cached.comments) == 300
+    assert len(cached.comments) == 325
     assert all(
         row["source_url"] == "https://www.facebook.com/page/posts/123456/"
         for row in cached.comments
@@ -275,3 +275,91 @@ def test_link_registry_dedupes_tracking_variants_by_content_id(tmp_path, monkeyp
 
     assert len(second) == 1
     assert second.iloc[0]["content_id"] == "123"
+
+
+def test_track_trend_refreshes_and_merges_new_comments(tmp_path, monkeypatch):
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    cached_path = raw_dir / "comments_post_987654.csv"
+    pd.DataFrame(
+        [
+            {
+                "comment_id": "old",
+                "text": "Zesco power was unavailable yesterday",
+                "timestamp": "2026-01-01T08:00:00Z",
+                "source_url": "https://www.facebook.com/page/posts/987654/",
+            }
+        ]
+    ).to_csv(cached_path, index=False)
+
+    monkeypatch.setattr(live_analysis, "RAW_DIR", raw_dir)
+    monkeypatch.setattr(live_analysis, "LIVE_RAW_DIR", raw_dir / "url_fetches")
+    monkeypatch.setattr(
+        live_analysis,
+        "fetch_comments",
+        lambda *args, **kwargs: [
+            {
+                "comment_id": "old",
+                "text": "Zesco power was unavailable yesterday",
+                "timestamp": "2026-01-01T08:00:00Z",
+                "source_url": "https://www.facebook.com/page/posts/987654/",
+                "post_title": "Electricity supply update",
+                "collected_at": "2026-01-02T12:00:00Z",
+            },
+            {
+                "comment_id": "new",
+                "text": "Power has now been restored in our area",
+                "timestamp": "2026-01-02T10:00:00Z",
+                "source_url": "https://www.facebook.com/page/posts/987654/",
+                "post_title": "Electricity supply update",
+                "collected_at": "2026-01-02T12:00:00Z",
+            },
+        ],
+    )
+    monkeypatch.setattr(live_analysis, "save_raw_fetch", lambda *args, **kwargs: "raw.csv")
+    saved_cache: list[dict[str, object]] = []
+
+    def fake_save_cache(comments, *, source_url):
+        saved_cache.extend(comments)
+        return "cache.csv"
+
+    monkeypatch.setattr(live_analysis, "save_post_cache", fake_save_cache)
+    monkeypatch.setattr(
+        live_analysis,
+        "analyze_comments_frame",
+        lambda comments, **kwargs: pd.DataFrame(
+            {
+                "comment_id": [row["comment_id"] for row in comments],
+                "post_title": [row.get("post_title", "") for row in comments],
+                "is_relevant": [True] * len(comments),
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        live_analysis,
+        "save_live_analysis",
+        lambda analyzed, source_url: {
+            "single_analysis_path": "analysis.csv",
+            "history_path": "history.csv",
+            "training_candidates_path": "candidates.csv",
+            "history_rows": len(analyzed),
+            "training_candidate_rows": len(analyzed),
+        },
+    )
+    monkeypatch.setattr(live_analysis, "_save_link_record", lambda record: pd.DataFrame([record]))
+
+    analyzed, summary = live_analysis.analyze_facebook_url(
+        "https://www.facebook.com/page/posts/987654/",
+        models_dir=tmp_path,
+        max_comments=1000,
+        force_refresh=True,
+    )
+
+    assert analyzed["comment_id"].tolist() == ["old", "new"]
+    assert len(saved_cache) == 2
+    assert saved_cache[1]["first_seen_at"] == "2026-01-02T12:00:00Z"
+    assert saved_cache[1]["last_seen_at"] == "2026-01-02T12:00:00Z"
+    assert summary["tracking_refresh"] is True
+    assert summary["new_comment_rows"] == 1
+    assert summary["post_title"] == "Electricity supply update"
+    assert summary["collection_source"] == "apify_refresh"

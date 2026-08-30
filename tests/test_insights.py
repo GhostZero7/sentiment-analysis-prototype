@@ -13,8 +13,10 @@ from src.insights.topic_analyzer import add_topic_labels, assign_topic, summariz
 from src.temporal.event_tracker import (
     build_comment_progression,
     build_sentiment_trends,
+    build_trend_events,
     describe_comment_progression,
     describe_negative_trend,
+    resolve_trend_frequency,
 )
 
 
@@ -100,6 +102,32 @@ def test_comment_progression_shows_movement_without_multiple_time_periods():
     assert progression["period"].tolist() == ["Comments 1-2", "Comments 3-4"]
     assert progression["negative_percent"].tolist() == [100.0, 0.0]
     assert "fell by 100.0 points" in describe_comment_progression(progression)
+
+
+def test_automatic_trend_uses_hours_for_short_discussion_and_explains_change():
+    frame = _sample_comments().copy()
+    frame["timestamp"] = [
+        "2026-01-01T08:00:00Z",
+        "2026-01-01T08:30:00Z",
+        "2026-01-01T10:00:00Z",
+        "2026-01-01T10:30:00Z",
+    ]
+    frame["topic"] = [
+        "Load shedding and reliability",
+        "Load shedding and reliability",
+        "Renewable energy and solar",
+        "Renewable energy and solar",
+    ]
+
+    assert resolve_trend_frequency(frame) == "Hour"
+    trends = build_sentiment_trends(frame, frequency="Automatic")
+    events = build_trend_events(frame, trends, frequency="Automatic")
+
+    assert len(trends) == 2
+    assert len(events) == 1
+    assert "Negative sentiment fell" in events.iloc[0]["movement"]
+    assert "Renewable energy and solar" in events.iloc[0]["evidence"]
+    assert events.iloc[0]["representative_comment"]
 
 
 def test_policy_recommendations_include_auditable_evidence():

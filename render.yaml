@@ -20,6 +20,6 @@ services:
       - key: APIFY_TIMEOUT_SECS
         value: "120"
       - key: APIFY_MAX_COMMENTS
-        value: "300"
+        value: "1000"
       - key: APIFY_COMMENTS_MODE
         value: ALL
