@@ -353,7 +353,53 @@ def _render_overview(
         st.dataframe(preview, width="stretch", hide_index=True)
 
 
-def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
+def _render_trends(
+    frame: pd.DataFrame,
+    label_column: str,
+    *,
+    source_url: str,
+    max_comments: int,
+) -> None:
+    control_text, control_button = st.columns([3, 1])
+    with control_text:
+        st.subheader("Trend Tracking")
+        st.caption(
+            f"Refresh this Facebook discussion and merge up to {max_comments:,} comments "
+            "with its saved history."
+        )
+    with control_button:
+        track_submitted = st.button(
+            "Track trend",
+            type="primary",
+            use_container_width=True,
+            key="track_current_url_trend",
+        )
+
+    if track_submitted:
+        with st.spinner("Refreshing the discussion and merging new comments..."):
+            try:
+                live_results, save_summary = analyze_facebook_url(
+                    source_url,
+                    models_dir=MODELS_DIR,
+                    max_comments=max_comments,
+                    force_refresh=True,
+                )
+            except Exception as exc:
+                st.error(f"Trend refresh could not be completed: {exc}")
+                return
+        st.session_state["latest_live_results"] = live_results
+        st.session_state["latest_live_summary"] = save_summary
+        st.session_state["_trend_flash"] = (
+            f"Trend refreshed through {save_summary.get('trend_cutoff', 'now')}; "
+            f"{save_summary.get('new_comment_rows', 0):,} newly discovered comments were "
+            "merged with the saved discussion."
+        )
+        st.rerun()
+
+    trend_flash = st.session_state.pop("_trend_flash", None)
+    if trend_flash:
+        st.success(str(trend_flash))
+
     automatic_frequency = resolve_trend_frequency(frame)
     automatic = build_sentiment_trends(
         frame,
@@ -704,32 +750,23 @@ def _render_url_analysis() -> None:
             step=50,
             help="Choose how many public top-level comments to collect, from 10 to 1,000.",
         )
-        analyze_column, trend_column = st.columns(2)
-        with analyze_column:
-            submitted = st.form_submit_button("Analyze public comments", use_container_width=True)
-        with trend_column:
-            track_submitted = st.form_submit_button(
-                "Track trend",
-                type="primary",
-                use_container_width=True,
-            )
+        submitted = st.form_submit_button(
+            "Analyze public comments",
+            type="primary",
+            use_container_width=True,
+        )
 
-    if submitted or track_submitted:
+    if submitted:
         if not facebook_url.strip():
             st.warning("Enter a public Facebook URL.")
             return
-        spinner_text = (
-            "Refreshing the discussion and merging new comments..."
-            if track_submitted
-            else "Checking saved data, then collecting only if needed..."
-        )
-        with st.spinner(spinner_text):
+        with st.spinner("Checking saved data, then collecting only if needed..."):
             try:
                 live_results, save_summary = analyze_facebook_url(
                     facebook_url.strip(),
                     models_dir=MODELS_DIR,
                     max_comments=int(max_comments),
-                    force_refresh=bool(track_submitted),
+                    force_refresh=False,
                 )
             except Exception as exc:
                 st.error(f"Analysis could not be completed: {exc}")
@@ -737,13 +774,7 @@ def _render_url_analysis() -> None:
 
         st.session_state["latest_live_results"] = live_results
         st.session_state["latest_live_summary"] = save_summary
-        if track_submitted:
-            st.session_state["_analysis_flash"] = (
-                f"Trend refreshed through {save_summary.get('trend_cutoff', 'now')}; "
-                f"{save_summary.get('new_comment_rows', 0):,} newly discovered comments were "
-                "merged with the saved discussion. Open the Trends tab to review movement."
-            )
-        elif save_summary.get("cache_hit"):
+        if save_summary.get("cache_hit"):
             st.session_state["_analysis_flash"] = (
                 f"Loaded {save_summary['fetched_rows']:,} saved comments and analyzed them locally; "
                 "no Apify tokens were used."
@@ -764,6 +795,8 @@ def _render_url_analysis() -> None:
             st.caption("Post title unavailable from Facebook.")
         if summary.get("cache_hit"):
             st.success("Loaded from the local dataset cache. No Apify tokens were used.")
+        elif summary.get("tracking_refresh"):
+            st.caption("Collection source: Apify trend refresh.")
         else:
             st.caption("Collection source: Apify (new URL).")
         result_columns = st.columns(3)
@@ -778,7 +811,8 @@ def _render_url_analysis() -> None:
 
     st.caption(
         "Saved comments are reused before Apify is called. Only publicly accessible comments are "
-        "analyzed, and results are aggregated for research and decision support."
+        "analyzed. After the first analysis, use Track trend in the Trends tab to refresh the "
+        "discussion."
     )
 
 
@@ -852,13 +886,24 @@ def main() -> None:
         total_comments=len(topic_data),
     )
     source_url = str(topic_data.iloc[0].get("source_url", "Current URL"))
+    latest_summary = st.session_state.get("latest_live_summary")
+    requested_limit = (
+        int(latest_summary.get("requested_comment_limit", len(raw_data)))
+        if isinstance(latest_summary, dict)
+        else len(raw_data)
+    )
     post_title = str(topic_data.iloc[0].get("post_title", "")).strip()
     report_source = f"{post_title} — {source_url}" if post_title else source_url
 
     with overview_tab:
         _render_overview(topic_data, sentiment, emotions, topics, recommendations)
     with trends_tab:
-        _render_trends(topic_data, label_column)
+        _render_trends(
+            topic_data,
+            label_column,
+            source_url=source_url,
+            max_comments=requested_limit,
+        )
     with topics_tab:
         _render_topics(topic_data, topics, label_column)
     with comments_tab:

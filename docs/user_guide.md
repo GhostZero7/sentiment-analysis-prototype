@@ -22,7 +22,8 @@ confirms that no Apify tokens were used. Apify is contacted only for an unseen U
 all requests are limited to 1,000 top-level comments. Replies are excluded so reply names
 and side conversations do not distort the post-level sentiment result.
 
-Select **Track trend** to refresh the pasted URL. The system merges newly discovered
+After the initial analysis, open the **Trends** tab and select **Track trend** to refresh
+the current URL. The system uses the chosen comment limit, merges newly discovered
 comments with the saved discussion, removes duplicates, and records the refresh cutoff.
 This action contacts Apify even when a cache exists. The Facebook post title is displayed
 when it is available from the public post metadata.

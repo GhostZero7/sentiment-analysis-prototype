@@ -516,6 +516,7 @@ def analyze_facebook_url(
     save_summary["analyzed_rows"] = int(len(analyzed))
     save_summary["relevant_rows"] = int(analyzed["is_relevant"].fillna(False).sum()) if not analyzed.empty else 0
     save_summary["source_url"] = source_url
+    save_summary["requested_comment_limit"] = max_comments
     save_summary["post_title"] = _post_title(comments)
     save_summary["trend_cutoff"] = cutoff.isoformat()
     save_summary["tracking_refresh"] = bool(force_refresh)
@@ -531,6 +532,7 @@ def analyze_facebook_url(
             "cache_path": cache_path,
             "cache_rows_available": cache_rows_available,
             "new_comment_rows": new_comment_count,
+            "requested_comment_limit": max_comments,
             "fetched_rows": save_summary["fetched_rows"],
             "analyzed_rows": save_summary["analyzed_rows"],
             "relevant_rows": save_summary["relevant_rows"],

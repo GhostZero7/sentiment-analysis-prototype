@@ -150,8 +150,9 @@ streamlit run src/dashboard/app.py
 ```
 
 In the dashboard, paste a Facebook URL, choose between 10 and 1,000 comments, and click
-**Analyze public comments**. Use **Track trend** to refresh a discussion, merge newly
-discovered comments with its cache, and analyze movement through the refresh time.
+**Analyze public comments**. After the initial analysis, open **Trends** and use
+**Track trend** to refresh the discussion, merge newly discovered comments with its
+cache, and analyze movement through the refresh time.
 
 Before calling Apify, the dashboard extracts the Facebook post/video ID and checks for
 `data/raw/comments_post_<id>.csv`, prior dashboard raw fetches, and the combined raw

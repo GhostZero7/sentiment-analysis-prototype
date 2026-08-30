@@ -360,6 +360,7 @@ def test_track_trend_refreshes_and_merges_new_comments(tmp_path, monkeypatch):
     assert saved_cache[1]["first_seen_at"] == "2026-01-02T12:00:00Z"
     assert saved_cache[1]["last_seen_at"] == "2026-01-02T12:00:00Z"
     assert summary["tracking_refresh"] is True
+    assert summary["requested_comment_limit"] == 1000
     assert summary["new_comment_rows"] == 1
     assert summary["post_title"] == "Electricity supply update"
     assert summary["collection_source"] == "apify_refresh"
