@@ -150,9 +150,14 @@ streamlit run src/dashboard/app.py
 ```
 
 In the dashboard, paste a Facebook URL, choose between 10 and 1,000 comments, and click
-**Analyze public comments**. After the initial analysis, open **Trends** and use
-**Track trend** to refresh the discussion, merge newly discovered comments with its
-cache, and analyze movement through the refresh time.
+**Analyze public comments**. After analyzing multiple links, open **Trends** and use
+**Track trend** to compare the five most recently analyzed distinct links. Each link is
+one trend point dated by its analysis time, and the comparison uses saved results without
+calling Apify.
+
+Long-running deployments must place these saved analysis files on persistent storage.
+Render's free web-service filesystem is ephemeral, so its local trend history can be lost
+when the service restarts, redeploys, or spins down.
 
 Before calling Apify, the dashboard extracts the Facebook post/video ID and checks for
 `data/raw/comments_post_<id>.csv`, prior dashboard raw fetches, and the combined raw

@@ -242,7 +242,14 @@ def fetch_comments(url: str, max_comments: int | None = None) -> list[dict[str, 
         }
 
     def _run_actor(actor_id: str) -> list[dict[str, Any]]:
-        run = client.actor(actor_id).call(run_input=actor_input, timeout_secs=config.timeout_secs)
+        actor = client.actor(actor_id)
+        try:
+            run = actor.call(run_input=actor_input, timeout_secs=config.timeout_secs)
+        except TypeError as exc:
+            if "timeout_secs" not in str(exc):
+                raise
+            # Compatibility with older Apify client releases deployed on Render.
+            run = actor.call(run_input=actor_input)
         dataset_id = run.get("defaultDatasetId")
         if not dataset_id:
             raise ApifyFetchError("Apify run completed without a dataset.")

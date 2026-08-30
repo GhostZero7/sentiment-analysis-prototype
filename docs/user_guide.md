@@ -22,11 +22,15 @@ confirms that no Apify tokens were used. Apify is contacted only for an unseen U
 all requests are limited to 1,000 top-level comments. Replies are excluded so reply names
 and side conversations do not distort the post-level sentiment result.
 
-After the initial analysis, open the **Trends** tab and select **Track trend** to refresh
-the current URL. The system uses the chosen comment limit, merges newly discovered
-comments with the saved discussion, removes duplicates, and records the refresh cutoff.
-This action contacts Apify even when a cache exists. The Facebook post title is displayed
+After analyzing multiple links, open the **Trends** tab and select **Track trend**. The
+system loads up to five of the most recently analyzed distinct links and treats each
+link's analysis date as one point in the trend. It compares sentiment percentages from
+the saved relevant comments and does not contact Apify. The Facebook post title is shown
 when it is available from the public post metadata.
+
+For comparisons collected over weeks or months, the deployed app must use persistent
+storage. A free Render web service does not preserve locally written analysis files across
+all restarts, redeploys, and spin-downs.
 
 When analysis finishes, the Overview, Trends, Topics, and Report tabs show results only
 for that URL. Analyzing another URL replaces the current results. Use **Clear current

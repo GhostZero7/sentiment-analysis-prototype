@@ -115,6 +115,54 @@ def test_shared_apify_client_caps_every_request_at_1000(monkeypatch):
     assert rows[0]["collected_at"]
 
 
+def test_apify_client_supports_legacy_actor_call_without_timeout(monkeypatch):
+    captured: dict[str, object] = {}
+
+    class LegacyActor:
+        def call(self, *, run_input):
+            captured["run_input"] = run_input
+            return {"defaultDatasetId": "legacy-dataset"}
+
+    class DummyDataset:
+        def iterate_items(self):
+            return [
+                {
+                    "commentId": "legacy-1",
+                    "text": "Power supply is stable today",
+                    "date": "2026-01-01",
+                    "threadingDepth": 0,
+                }
+            ]
+
+    class LegacyClient:
+        def __init__(self, api_key):
+            captured["api_key"] = api_key
+
+        def actor(self, actor_id):
+            captured["actor_id"] = actor_id
+            return LegacyActor()
+
+        def dataset(self, dataset_id):
+            captured["dataset_id"] = dataset_id
+            return DummyDataset()
+
+    monkeypatch.setattr(
+        apify_client,
+        "_load_config",
+        lambda: apify_client.ApifyConfig(api_key="legacy-key"),
+    )
+    monkeypatch.setattr(apify_client, "ApifyClient", LegacyClient)
+
+    rows = apify_client.fetch_comments(
+        "https://www.facebook.com/page/posts/123/",
+        max_comments=300,
+    )
+
+    assert len(rows) == 1
+    assert captured["run_input"]["resultsLimit"] == 300
+    assert captured["dataset_id"] == "legacy-dataset"
+
+
 def test_apify_client_rejects_parent_linked_reply_and_strips_structured_mention():
     source_url = "https://www.facebook.com/page/posts/123/"
     assert apify_client._normalise_item(

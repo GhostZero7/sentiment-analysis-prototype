@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +13,7 @@ import pandas as pd
 
 from src.data_collection.apify_client import MAX_COMMENTS_PER_URL, fetch_comments
 from src.data_collection.url_utils import canonical_facebook_url, facebook_content_id
+from src.insights.topic_analyzer import add_topic_labels
 from src.models.predict import predict_texts
 from src.preprocessing.cleaner import CleaningConfig, clean_frame
 from src.preprocessing.relevance import assess_relevance
@@ -30,6 +32,17 @@ LIVE_RESULTS_DIR = DATA_DIR / "results" / "url_analyses"
 LIVE_LABELED_DIR = DATA_DIR / "processed" / "labeled"
 LIVE_HISTORY_PATH = LIVE_LABELED_DIR / "url_analysis_history.csv"
 LIVE_TRAINING_CANDIDATES_PATH = LIVE_LABELED_DIR / "url_training_candidates.csv"
+LINK_TREND_COLUMNS = [
+    "period",
+    "link_number",
+    "link_label",
+    "source_url",
+    "comment_count",
+    "negative_percent",
+    "neutral_percent",
+    "positive_percent",
+    "top_topic",
+]
 COMMENT_METADATA_COLUMNS = (
     "post_title",
     "collected_at",
@@ -374,6 +387,155 @@ def _post_title(comments: list[dict[str, Any]]) -> str:
         ),
         "",
     )
+
+
+def _text_value(value: object) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _analysis_path_for_link(record: pd.Series) -> Path | None:
+    saved_path = _text_value(record.get("single_analysis_path", ""))
+    candidates: list[Path] = []
+    if saved_path:
+        candidates.append(Path(saved_path))
+        filename = re.split(r"[\\/]", saved_path)[-1]
+        candidates.append(LIVE_RESULTS_DIR / filename)
+
+    url_hash = _text_value(record.get("url_hash", ""))
+    if url_hash and LIVE_RESULTS_DIR.is_dir():
+        candidates.extend(
+            sorted(
+                LIVE_RESULTS_DIR.glob(f"analysis_{url_hash}_*.csv"),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+        )
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _history_rows_for_url(history: pd.DataFrame, source_url: str) -> pd.DataFrame:
+    if history.empty or "source_url" not in history.columns:
+        return pd.DataFrame()
+    content_id = facebook_content_id(source_url)
+    sources = history["source_url"].fillna("").astype(str)
+    if content_id:
+        source_ids = sources.map(facebook_content_id)
+        return history[source_ids.eq(content_id)].copy()
+    canonical = canonical_facebook_url(source_url)
+    return history[sources.map(canonical_facebook_url).eq(canonical)].copy()
+
+
+def _link_label(record: pd.Series, analyzed: pd.DataFrame, link_number: int) -> str:
+    title = _text_value(record.get("post_title", ""))
+    if not title and "post_title" in analyzed.columns:
+        titles = analyzed["post_title"].fillna("").astype(str).str.strip()
+        titles = titles[titles.ne("")]
+        if not titles.empty:
+            title = titles.iloc[0]
+    if title:
+        return title[:100]
+    content_id = facebook_content_id(_text_value(record.get("source_url", "")))
+    return f"Facebook post {content_id}" if content_id else f"Saved link {link_number}"
+
+
+def load_recent_link_trends(
+    *,
+    limit: int = 5,
+    relevant_only: bool = True,
+) -> pd.DataFrame:
+    """Aggregate sentiment for the most recently analyzed distinct Facebook links."""
+    if not LIVE_LINKS_PATH.is_file():
+        return pd.DataFrame(columns=LINK_TREND_COLUMNS)
+    try:
+        links = pd.read_csv(LIVE_LINKS_PATH, dtype={"source_url": str, "content_id": str})
+    except (OSError, pd.errors.ParserError, UnicodeDecodeError):
+        return pd.DataFrame(columns=LINK_TREND_COLUMNS)
+    if links.empty or "source_url" not in links.columns or "last_analyzed_at" not in links.columns:
+        return pd.DataFrame(columns=LINK_TREND_COLUMNS)
+
+    links = links.copy()
+    links["source_url"] = links["source_url"].fillna("").astype(str).str.strip()
+    links["_analysis_time"] = pd.to_datetime(
+        links["last_analyzed_at"], errors="coerce", utc=True
+    )
+    links = links[links["source_url"].ne("") & links["_analysis_time"].notna()].copy()
+    if links.empty:
+        return pd.DataFrame(columns=LINK_TREND_COLUMNS)
+    links["_content_id"] = links["source_url"].map(facebook_content_id).fillna("")
+    links["_source_key"] = links["_content_id"].where(
+        links["_content_id"].ne(""),
+        links["source_url"].map(canonical_facebook_url),
+    )
+    links = (
+        links.sort_values("_analysis_time", ascending=False)
+        .drop_duplicates(subset="_source_key", keep="first")
+        .head(max(1, min(int(limit), 5)))
+        .sort_values("_analysis_time")
+        .reset_index(drop=True)
+    )
+
+    history = pd.DataFrame()
+    if LIVE_HISTORY_PATH.is_file():
+        try:
+            history = pd.read_csv(LIVE_HISTORY_PATH, dtype={"source_url": str})
+        except (OSError, pd.errors.ParserError, UnicodeDecodeError):
+            history = pd.DataFrame()
+
+    rows: list[dict[str, Any]] = []
+    for _, record in links.iterrows():
+        analysis_path = _analysis_path_for_link(record)
+        analyzed = pd.DataFrame()
+        if analysis_path:
+            try:
+                analyzed = pd.read_csv(analysis_path, dtype={"source_url": str})
+            except (OSError, pd.errors.ParserError, UnicodeDecodeError):
+                analyzed = pd.DataFrame()
+        if analyzed.empty:
+            analyzed = _history_rows_for_url(history, _text_value(record["source_url"]))
+        if analyzed.empty:
+            continue
+
+        selected = analyzed.copy()
+        if relevant_only and "is_relevant" in selected.columns:
+            relevant = selected["is_relevant"]
+            if relevant.dtype != bool:
+                relevant = relevant.fillna(False).astype(str).str.lower().isin({"true", "1", "yes"})
+            selected = selected[relevant].copy()
+        label_column = next(
+            (column for column in ("corrected_label", "label") if column in selected.columns),
+            None,
+        )
+        if selected.empty or not label_column:
+            continue
+        labels = selected[label_column].fillna("unknown").astype(str).str.strip().str.lower()
+        selected = selected[labels.isin({"negative", "neutral", "positive"})].copy()
+        labels = labels[labels.isin({"negative", "neutral", "positive"})]
+        if selected.empty:
+            continue
+
+        topics = add_topic_labels(selected)["topic"].fillna("").astype(str)
+        top_topic = str(topics.value_counts().index[0]) if not topics.empty else "Unavailable"
+        link_number = len(rows) + 1
+        rows.append(
+            {
+                "period": record["_analysis_time"],
+                "link_number": link_number,
+                "link_label": _link_label(record, selected, link_number),
+                "source_url": _text_value(record["source_url"]),
+                "comment_count": int(len(selected)),
+                "negative_percent": round(float(labels.eq("negative").mean() * 100), 1),
+                "neutral_percent": round(float(labels.eq("neutral").mean() * 100), 1),
+                "positive_percent": round(float(labels.eq("positive").mean() * 100), 1),
+                "top_topic": top_topic,
+            }
+        )
+    return pd.DataFrame(rows, columns=LINK_TREND_COLUMNS)
 
 
 def analyze_comments_frame(

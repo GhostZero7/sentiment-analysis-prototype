@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from datetime import datetime, timezone
 from html import escape
@@ -16,7 +17,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.dashboard.live_analysis import analyze_facebook_url
+from src.dashboard.live_analysis import analyze_facebook_url, load_recent_link_trends
+from src.data_collection.apify_client import ApifyFetchError
 from src.insights.policy_report import (
     build_policy_recommendations,
     build_stakeholder_report,
@@ -65,6 +67,53 @@ EMOTION_COLORS = {
     "Hope": "#2E8B57",
     "Frustration": "#E67E22",
 }
+LOGGER = logging.getLogger(__name__)
+
+
+def _friendly_error_message(
+    error: Exception,
+    *,
+    fallback: str = "Something went wrong. Please try again.",
+) -> str:
+    """Return a short user-safe message while technical details remain in server logs."""
+    if isinstance(error, ApifyFetchError):
+        return "Apify tokens are depleted. Please try again after the tokens are renewed."
+    if isinstance(error, ValueError):
+        return "Enter a valid public Facebook post URL and try again."
+    if isinstance(error, FileNotFoundError):
+        return "The analysis files are temporarily unavailable. Please contact the administrator."
+    if isinstance(error, PermissionError):
+        return "The result could not be saved. Please contact the administrator."
+    return fallback
+
+
+def _show_user_error(
+    error: Exception,
+    *,
+    operation: str,
+    fallback: str = "Something went wrong. Please try again.",
+) -> None:
+    LOGGER.error(
+        "%s failed",
+        operation,
+        exc_info=(type(error), error, error.__traceback__),
+    )
+    st.error(_friendly_error_message(error, fallback=fallback))
+
+
+def _render_safely(section_name: str, renderer, *args, **kwargs) -> None:
+    """Render one dashboard section without exposing an exception traceback to users."""
+    try:
+        renderer(*args, **kwargs)
+    except Exception as exc:  # pragma: no cover - defensive UI boundary
+        _show_user_error(
+            exc,
+            operation=f"Render {section_name} section",
+            fallback=(
+                f"The {section_name} section could not be displayed. "
+                "Please analyze the URL again."
+            ),
+        )
 
 
 def _inject_styles() -> None:
@@ -353,19 +402,80 @@ def _render_overview(
         st.dataframe(preview, width="stretch", hide_index=True)
 
 
-def _render_trends(
-    frame: pd.DataFrame,
-    label_column: str,
-    *,
-    source_url: str,
-    max_comments: int,
-) -> None:
+def _render_recent_link_trends(trends: pd.DataFrame) -> None:
+    if trends.empty:
+        st.info(
+            "No saved link analyses are available yet. Analyze at least two different "
+            "Facebook links, then return here."
+        )
+        return
+    if len(trends) < 2:
+        st.info(
+            "One saved link is available. Analyze another Facebook link before calculating "
+            "a direction of change."
+        )
+    else:
+        st.caption(describe_negative_trend(trends))
+        _compact_line_chart(
+            trends,
+            value_columns=["negative_percent", "neutral_percent", "positive_percent"],
+            labels={
+                "negative_percent": "Negative",
+                "neutral_percent": "Neutral",
+                "positive_percent": "Positive",
+            },
+            colors=SENTIMENT_COLORS,
+            temporal=True,
+            value_title="Share of relevant comments (%)",
+        )
+        changes = trends["negative_percent"].diff().abs()
+        if changes.notna().any():
+            change_index = int(changes.idxmax())
+            previous = trends.iloc[change_index - 1]
+            current = trends.iloc[change_index]
+            signed_change = float(current["negative_percent"] - previous["negative_percent"])
+            direction = "increased" if signed_change > 0 else "decreased"
+            st.info(
+                f"The largest change was between {previous['link_label']} and "
+                f"{current['link_label']}: negative sentiment {direction} by "
+                f"{abs(signed_change):.1f} percentage points. The latest link's leading "
+                f"topic was {current['top_topic']}."
+            )
+
+    table = trends.copy()
+    table["period"] = pd.to_datetime(table["period"], errors="coerce", utc=True).dt.strftime(
+        "%Y-%m-%d"
+    )
+    st.dataframe(
+        table.rename(
+            columns={
+                "period": "Analysis date",
+                "link_number": "Link",
+                "link_label": "Post title",
+                "source_url": "Facebook URL",
+                "comment_count": "Relevant comments",
+                "negative_percent": "Negative %",
+                "neutral_percent": "Neutral %",
+                "positive_percent": "Positive %",
+                "top_topic": "Leading topic",
+            }
+        ),
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "Facebook URL": st.column_config.LinkColumn(width="large"),
+            "Post title": st.column_config.TextColumn(width="large"),
+        },
+    )
+
+
+def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
     control_text, control_button = st.columns([3, 1])
     with control_text:
-        st.subheader("Trend Tracking")
+        st.subheader("Trend Across Recent Links")
         st.caption(
-            f"Refresh this Facebook discussion and merge up to {max_comments:,} comments "
-            "with its saved history."
+            "Compare the five most recently analyzed distinct Facebook links using the date "
+            "each link was analyzed. This uses saved results and does not consume Apify tokens."
         )
     with control_button:
         track_submitted = st.button(
@@ -376,29 +486,26 @@ def _render_trends(
         )
 
     if track_submitted:
-        with st.spinner("Refreshing the discussion and merging new comments..."):
+        with st.spinner("Loading the five most recent saved link analyses..."):
             try:
-                live_results, save_summary = analyze_facebook_url(
-                    source_url,
-                    models_dir=MODELS_DIR,
-                    max_comments=max_comments,
-                    force_refresh=True,
-                )
+                st.session_state["recent_link_trends"] = load_recent_link_trends(limit=5)
             except Exception as exc:
-                st.error(f"Trend refresh could not be completed: {exc}")
+                _show_user_error(
+                    exc,
+                    operation="Load recent-link trend",
+                    fallback="The saved-link trend could not be loaded. Please try again.",
+                )
                 return
-        st.session_state["latest_live_results"] = live_results
-        st.session_state["latest_live_summary"] = save_summary
-        st.session_state["_trend_flash"] = (
-            f"Trend refreshed through {save_summary.get('trend_cutoff', 'now')}; "
-            f"{save_summary.get('new_comment_rows', 0):,} newly discovered comments were "
-            "merged with the saved discussion."
-        )
-        st.rerun()
 
-    trend_flash = st.session_state.pop("_trend_flash", None)
-    if trend_flash:
-        st.success(str(trend_flash))
+    recent_link_trends = st.session_state.get("recent_link_trends")
+    if isinstance(recent_link_trends, pd.DataFrame):
+        _render_recent_link_trends(recent_link_trends)
+
+    st.divider()
+    st.subheader("Current Link Discussion Pattern")
+    st.caption(
+        "The charts below describe comment timing within the currently selected Facebook link."
+    )
 
     automatic_frequency = resolve_trend_frequency(frame)
     automatic = build_sentiment_trends(
@@ -769,11 +876,16 @@ def _render_url_analysis() -> None:
                     force_refresh=False,
                 )
             except Exception as exc:
-                st.error(f"Analysis could not be completed: {exc}")
+                _show_user_error(
+                    exc,
+                    operation="Facebook URL analysis",
+                    fallback="The comments could not be analyzed. Please try again.",
+                )
                 return
 
         st.session_state["latest_live_results"] = live_results
         st.session_state["latest_live_summary"] = save_summary
+        st.session_state.pop("recent_link_trends", None)
         if save_summary.get("cache_hit"):
             st.session_state["_analysis_flash"] = (
                 f"Loaded {save_summary['fetched_rows']:,} saved comments and analyzed them locally; "
@@ -811,8 +923,8 @@ def _render_url_analysis() -> None:
 
     st.caption(
         "Saved comments are reused before Apify is called. Only publicly accessible comments are "
-        "analyzed. After the first analysis, use Track trend in the Trends tab to refresh the "
-        "discussion."
+        "analyzed. After analyzing at least two different links, use Track trend in the Trends "
+        "tab to compare up to five saved link analyses."
     )
 
 
@@ -870,46 +982,51 @@ def main() -> None:
                 st.info("Analyze a public Facebook post URL to view these results.")
         return
 
-    label_column = _label_column(filtered_data)
-    topic_data = add_topic_labels(filtered_data)
-    sentiment = _sentiment_summary(topic_data, label_column)
-    emotions = _emotion_summary(topic_data)
-    topics = summarize_topics(topic_data, label_column=label_column)
-    daily_trends = build_sentiment_trends(
-        topic_data,
-        frequency="Day",
-        label_column=label_column,
-    )
-    recommendations = build_policy_recommendations(
-        topics,
-        trend_data=daily_trends,
-        total_comments=len(topic_data),
-    )
+    try:
+        label_column = _label_column(filtered_data)
+        topic_data = add_topic_labels(filtered_data)
+        sentiment = _sentiment_summary(topic_data, label_column)
+        emotions = _emotion_summary(topic_data)
+        topics = summarize_topics(topic_data, label_column=label_column)
+        daily_trends = build_sentiment_trends(
+            topic_data,
+            frequency="Day",
+            label_column=label_column,
+        )
+        recommendations = build_policy_recommendations(
+            topics,
+            trend_data=daily_trends,
+            total_comments=len(topic_data),
+        )
+    except Exception as exc:  # pragma: no cover - defensive UI boundary
+        _show_user_error(
+            exc,
+            operation="Prepare dashboard results",
+            fallback="The results could not be prepared. Please analyze the URL again.",
+        )
+        return
     source_url = str(topic_data.iloc[0].get("source_url", "Current URL"))
-    latest_summary = st.session_state.get("latest_live_summary")
-    requested_limit = (
-        int(latest_summary.get("requested_comment_limit", len(raw_data)))
-        if isinstance(latest_summary, dict)
-        else len(raw_data)
-    )
     post_title = str(topic_data.iloc[0].get("post_title", "")).strip()
     report_source = f"{post_title} — {source_url}" if post_title else source_url
 
     with overview_tab:
-        _render_overview(topic_data, sentiment, emotions, topics, recommendations)
-    with trends_tab:
-        _render_trends(
+        _render_safely(
+            "overview",
+            _render_overview,
             topic_data,
-            label_column,
-            source_url=source_url,
-            max_comments=requested_limit,
+            sentiment,
+            emotions,
+            topics,
+            recommendations,
         )
+    with trends_tab:
+        _render_safely("trends", _render_trends, topic_data, label_column)
     with topics_tab:
-        _render_topics(topic_data, topics, label_column)
+        _render_safely("topics", _render_topics, topic_data, topics, label_column)
     with comments_tab:
-        _render_comments(topic_data, label_column)
+        _render_safely("comments", _render_comments, topic_data, label_column)
     with report_tab:
-        _render_report(topic_data, report_source)
+        _render_safely("report", _render_report, topic_data, report_source)
 
 
 if __name__ == "__main__":
