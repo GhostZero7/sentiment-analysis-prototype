@@ -74,6 +74,7 @@ def test_shared_apify_client_caps_every_request_at_1000(monkeypatch):
                     "text": "@Zesco Power restored",
                     "date": "2026-01-01",
                     "postTitle": "Power restoration update",
+                    "postCreatedAt": "2025-12-31T18:00:00Z",
                     "threadingDepth": 0,
                 },
                 {
@@ -112,6 +113,7 @@ def test_shared_apify_client_caps_every_request_at_1000(monkeypatch):
     assert rows[0]["text"] == "Power restored"
     assert rows[0]["timestamp"] == "2026-01-01"
     assert rows[0]["post_title"] == "Power restoration update"
+    assert rows[0]["post_date"] == "2025-12-31T18:00:00Z"
     assert rows[0]["collected_at"]
 
 
@@ -195,6 +197,7 @@ def test_apify_client_does_not_invent_missing_comment_time_and_keeps_title():
             "commentId": "comment-2",
             "text": "Public reaction",
             "postTitle": "New solar project announced",
+            "postPublishedAt": "2025-12-30T09:00:00Z",
             "threadingDepth": 0,
         },
         "https://www.facebook.com/page/posts/123/",
@@ -203,4 +206,5 @@ def test_apify_client_does_not_invent_missing_comment_time_and_keeps_title():
     assert row is not None
     assert row["timestamp"] == ""
     assert row["post_title"] == "New solar project announced"
+    assert row["post_date"] == "2025-12-30T09:00:00Z"
     assert row["collected_at"]

@@ -381,6 +381,7 @@ def test_recent_link_trends_use_latest_five_saved_distinct_links(tmp_path, monke
             {
                 "source_url": source_url,
                 "post_title": f"Energy event {index + 1}",
+                "timestamp": f"2025-{index + 1:02d}-02T08:00:00Z",
                 "text": "Zesco power outage update",
                 "corrected_label": label,
                 "is_relevant": True,
@@ -391,6 +392,7 @@ def test_recent_link_trends_use_latest_five_saved_distinct_links(tmp_path, monke
             {
                 "source_url": source_url,
                 "post_title": f"Energy event {index + 1}",
+                "timestamp": f"2025-{index + 1:02d}-03T08:00:00Z",
                 "text": "Unrelated birthday message",
                 "corrected_label": "negative",
                 "is_relevant": False,
@@ -402,7 +404,7 @@ def test_recent_link_trends_use_latest_five_saved_distinct_links(tmp_path, monke
                 "source_url": source_url,
                 "content_id": str(index + 1),
                 "url_hash": f"hash{index}",
-                "last_analyzed_at": f"2026-{index + 1:02d}-01T00:00:00+00:00",
+                "last_analyzed_at": f"2026-{6 - index:02d}-01T00:00:00+00:00",
                 "post_title": f"Energy event {index + 1}",
                 "single_analysis_path": str(result_path),
             }
@@ -428,6 +430,8 @@ def test_recent_link_trends_use_latest_five_saved_distinct_links(tmp_path, monke
     assert trends["comment_count"].tolist() == [7, 7, 7, 7, 7]
     assert trends["negative_percent"].tolist() == [28.6, 42.9, 57.1, 71.4, 85.7]
     assert set(trends["top_topic"]) == {"Load shedding and reliability"}
+    assert set(trends["date_source"]) == {"Earliest comment"}
+    assert trends["period"].iloc[0] == pd.Timestamp("2025-02-02T08:00:00Z")
     assert trends["period"].is_monotonic_increasing
 
 
@@ -440,6 +444,7 @@ def test_recent_link_trends_deduplicate_tracking_variants(tmp_path, monkeypatch)
             {
                 "source_url": "https://www.facebook.com/page/posts/99/",
                 "post_title": "Latest version",
+                "timestamp": "2025-11-02T08:00:00Z",
                 "text": "Power restored",
                 "corrected_label": "positive",
                 "is_relevant": True,
@@ -468,4 +473,41 @@ def test_recent_link_trends_deduplicate_tracking_variants(tmp_path, monkeypatch)
     trends = live_analysis.load_recent_link_trends(limit=5)
 
     assert len(trends) == 1
-    assert trends.iloc[0]["period"] == pd.Timestamp("2026-02-01T00:00:00Z")
+    assert trends.iloc[0]["period"] == pd.Timestamp("2025-11-02T08:00:00Z")
+
+
+def test_recent_link_trends_prefer_post_metadata_date(tmp_path, monkeypatch):
+    results_dir = tmp_path / "results"
+    results_dir.mkdir()
+    result_path = results_dir / "analysis_post_date.csv"
+    pd.DataFrame(
+        [
+            {
+                "source_url": "https://www.facebook.com/page/posts/88/",
+                "post_title": "Solar launch",
+                "post_date": "2025-03-10T07:00:00Z",
+                "timestamp": "2025-03-12T12:00:00Z",
+                "text": "This solar project provides reliable power",
+                "corrected_label": "positive",
+                "is_relevant": True,
+            }
+        ]
+    ).to_csv(result_path, index=False)
+    links_path = tmp_path / "url_links.csv"
+    pd.DataFrame(
+        [
+            {
+                "source_url": "https://www.facebook.com/page/posts/88/",
+                "last_analyzed_at": "2026-08-30T00:00:00Z",
+                "single_analysis_path": str(result_path),
+            }
+        ]
+    ).to_csv(links_path, index=False)
+    monkeypatch.setattr(live_analysis, "LIVE_LINKS_PATH", links_path)
+    monkeypatch.setattr(live_analysis, "LIVE_RESULTS_DIR", results_dir)
+    monkeypatch.setattr(live_analysis, "LIVE_HISTORY_PATH", tmp_path / "missing-history.csv")
+
+    trends = live_analysis.load_recent_link_trends(limit=5)
+
+    assert trends.iloc[0]["period"] == pd.Timestamp("2025-03-10T07:00:00Z")
+    assert trends.iloc[0]["date_source"] == "Post published"

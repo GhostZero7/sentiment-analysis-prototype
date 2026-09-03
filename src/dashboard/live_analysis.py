@@ -42,9 +42,11 @@ LINK_TREND_COLUMNS = [
     "neutral_percent",
     "positive_percent",
     "top_topic",
+    "date_source",
 ]
 COMMENT_METADATA_COLUMNS = (
     "post_title",
+    "post_date",
     "collected_at",
     "first_seen_at",
     "last_seen_at",
@@ -389,6 +391,16 @@ def _post_title(comments: list[dict[str, Any]]) -> str:
     )
 
 
+def _post_date(comments: list[dict[str, Any]]) -> str:
+    """Return the earliest explicit Facebook post-publication timestamp in the metadata."""
+    values = pd.to_datetime(
+        pd.Series([comment.get("post_date", "") for comment in comments]),
+        errors="coerce",
+        utc=True,
+    ).dropna()
+    return values.min().isoformat() if not values.empty else ""
+
+
 def _text_value(value: object) -> str:
     if value is None or pd.isna(value):
         return ""
@@ -444,27 +456,61 @@ def _link_label(record: pd.Series, analyzed: pd.DataFrame, link_number: int) -> 
     return f"Facebook post {content_id}" if content_id else f"Saved link {link_number}"
 
 
+def _first_valid_timestamp(values: pd.Series) -> pd.Timestamp | None:
+    parsed = pd.to_datetime(values, errors="coerce", utc=True).dropna()
+    return parsed.min() if not parsed.empty else None
+
+
+def _facebook_metadata_period(
+    record: pd.Series,
+    analyzed: pd.DataFrame,
+) -> tuple[pd.Timestamp | None, str]:
+    """Choose a Facebook metadata date without using analysis or collection timestamps."""
+    post_columns = (
+        "post_date",
+        "postDate",
+        "post_created_at",
+        "postCreatedAt",
+        "post_published_at",
+        "postPublishedAt",
+    )
+    for column in post_columns:
+        record_value = _text_value(record.get(column, ""))
+        if record_value:
+            parsed = _first_valid_timestamp(pd.Series([record_value]))
+            if parsed is not None:
+                return parsed, "Post published"
+        if column in analyzed.columns:
+            parsed = _first_valid_timestamp(analyzed[column])
+            if parsed is not None:
+                return parsed, "Post published"
+
+    for column in ("timestamp", "comment_date", "commentDate", "date", "publishedAt", "createdAt"):
+        if column in analyzed.columns:
+            parsed = _first_valid_timestamp(analyzed[column])
+            if parsed is not None:
+                return parsed, "Earliest comment"
+    return None, "Unavailable"
+
+
 def load_recent_link_trends(
     *,
     limit: int = 5,
     relevant_only: bool = True,
 ) -> pd.DataFrame:
-    """Aggregate sentiment for the most recently analyzed distinct Facebook links."""
+    """Aggregate the newest saved Facebook links using their content metadata dates."""
     if not LIVE_LINKS_PATH.is_file():
         return pd.DataFrame(columns=LINK_TREND_COLUMNS)
     try:
         links = pd.read_csv(LIVE_LINKS_PATH, dtype={"source_url": str, "content_id": str})
     except (OSError, pd.errors.ParserError, UnicodeDecodeError):
         return pd.DataFrame(columns=LINK_TREND_COLUMNS)
-    if links.empty or "source_url" not in links.columns or "last_analyzed_at" not in links.columns:
+    if links.empty or "source_url" not in links.columns:
         return pd.DataFrame(columns=LINK_TREND_COLUMNS)
 
     links = links.copy()
     links["source_url"] = links["source_url"].fillna("").astype(str).str.strip()
-    links["_analysis_time"] = pd.to_datetime(
-        links["last_analyzed_at"], errors="coerce", utc=True
-    )
-    links = links[links["source_url"].ne("") & links["_analysis_time"].notna()].copy()
+    links = links[links["source_url"].ne("")].copy()
     if links.empty:
         return pd.DataFrame(columns=LINK_TREND_COLUMNS)
     links["_content_id"] = links["source_url"].map(facebook_content_id).fillna("")
@@ -472,13 +518,7 @@ def load_recent_link_trends(
         links["_content_id"].ne(""),
         links["source_url"].map(canonical_facebook_url),
     )
-    links = (
-        links.sort_values("_analysis_time", ascending=False)
-        .drop_duplicates(subset="_source_key", keep="first")
-        .head(max(1, min(int(limit), 5)))
-        .sort_values("_analysis_time")
-        .reset_index(drop=True)
-    )
+    links = links.drop_duplicates(subset="_source_key", keep="last").reset_index(drop=True)
 
     history = pd.DataFrame()
     if LIVE_HISTORY_PATH.is_file():
@@ -499,6 +539,10 @@ def load_recent_link_trends(
         if analyzed.empty:
             analyzed = _history_rows_for_url(history, _text_value(record["source_url"]))
         if analyzed.empty:
+            continue
+
+        period, date_source = _facebook_metadata_period(record, analyzed)
+        if period is None:
             continue
 
         selected = analyzed.copy()
@@ -524,7 +568,7 @@ def load_recent_link_trends(
         link_number = len(rows) + 1
         rows.append(
             {
-                "period": record["_analysis_time"],
+                "period": period,
                 "link_number": link_number,
                 "link_label": _link_label(record, selected, link_number),
                 "source_url": _text_value(record["source_url"]),
@@ -533,9 +577,19 @@ def load_recent_link_trends(
                 "neutral_percent": round(float(labels.eq("neutral").mean() * 100), 1),
                 "positive_percent": round(float(labels.eq("positive").mean() * 100), 1),
                 "top_topic": top_topic,
+                "date_source": date_source,
             }
         )
-    return pd.DataFrame(rows, columns=LINK_TREND_COLUMNS)
+    result = pd.DataFrame(rows, columns=LINK_TREND_COLUMNS)
+    if result.empty:
+        return result
+    result = (
+        result.sort_values("period")
+        .tail(max(1, min(int(limit), 5)))
+        .reset_index(drop=True)
+    )
+    result["link_number"] = range(1, len(result) + 1)
+    return result
 
 
 def analyze_comments_frame(
@@ -680,6 +734,7 @@ def analyze_facebook_url(
     save_summary["source_url"] = source_url
     save_summary["requested_comment_limit"] = max_comments
     save_summary["post_title"] = _post_title(comments)
+    save_summary["post_date"] = _post_date(comments)
     save_summary["trend_cutoff"] = cutoff.isoformat()
     save_summary["tracking_refresh"] = bool(force_refresh)
     link_registry = _save_link_record(
@@ -687,6 +742,7 @@ def analyze_facebook_url(
             "source_url": source_url,
             "content_id": facebook_content_id(source_url) or "",
             "post_title": save_summary["post_title"],
+            "post_date": save_summary["post_date"],
             "url_hash": _url_hash(source_url),
             "last_analyzed_at": datetime.now(timezone.utc).isoformat(),
             "collection_source": collection_source,

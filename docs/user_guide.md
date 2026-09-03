@@ -23,10 +23,11 @@ all requests are limited to 1,000 top-level comments. Replies are excluded so re
 and side conversations do not distort the post-level sentiment result.
 
 After analyzing multiple links, open the **Trends** tab and select **Track trend**. The
-system loads up to five of the most recently analyzed distinct links and treats each
-link's analysis date as one point in the trend. It compares sentiment percentages from
-the saved relevant comments and does not contact Apify. The Facebook post title is shown
-when it is available from the public post metadata.
+system loads up to five distinct links ordered by their saved Facebook metadata dates.
+It uses the post-publication timestamp when available and otherwise the earliest valid
+Facebook comment timestamp. It never uses the analysis or collection date for the trend.
+The comparison uses saved relevant comments and does not contact Apify. The Facebook post
+title is shown when it is available from the public post metadata.
 
 For comparisons collected over weeks or months, the deployed app must use persistent
 storage. A free Render web service does not preserve locally written analysis files across

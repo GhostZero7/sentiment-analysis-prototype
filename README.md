@@ -151,9 +151,10 @@ streamlit run src/dashboard/app.py
 
 In the dashboard, paste a Facebook URL, choose between 10 and 1,000 comments, and click
 **Analyze public comments**. After analyzing multiple links, open **Trends** and use
-**Track trend** to compare the five most recently analyzed distinct links. Each link is
-one trend point dated by its analysis time, and the comparison uses saved results without
-calling Apify.
+**Track trend** to compare the five newest distinct links according to their saved Facebook
+metadata. Each link is one trend point dated by the post-publication timestamp when it is
+available, otherwise by the earliest valid Facebook comment timestamp. Analysis and
+collection timestamps are never used for the trend, and the comparison does not call Apify.
 
 Long-running deployments must place these saved analysis files on persistent storage.
 Render's free web-service filesystem is ephemeral, so its local trend history can be lost

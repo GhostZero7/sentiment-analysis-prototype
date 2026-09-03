@@ -449,7 +449,7 @@ def _render_recent_link_trends(trends: pd.DataFrame) -> None:
     st.dataframe(
         table.rename(
             columns={
-                "period": "Analysis date",
+                "period": "Facebook date",
                 "link_number": "Link",
                 "link_label": "Post title",
                 "source_url": "Facebook URL",
@@ -458,6 +458,7 @@ def _render_recent_link_trends(trends: pd.DataFrame) -> None:
                 "neutral_percent": "Neutral %",
                 "positive_percent": "Positive %",
                 "top_topic": "Leading topic",
+                "date_source": "Date source",
             }
         ),
         width="stretch",
@@ -474,8 +475,8 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
     with control_text:
         st.subheader("Trend Across Recent Links")
         st.caption(
-            "Compare the five most recently analyzed distinct Facebook links using the date "
-            "each link was analyzed. This uses saved results and does not consume Apify tokens."
+            "Compare the five newest saved Facebook discussions using dates from their Facebook "
+            "metadata, never the date the app analyzed them. This does not consume Apify tokens."
         )
     with control_button:
         track_submitted = st.button(
@@ -486,7 +487,7 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
         )
 
     if track_submitted:
-        with st.spinner("Loading the five most recent saved link analyses..."):
+        with st.spinner("Loading five saved links and their Facebook metadata dates..."):
             try:
                 st.session_state["recent_link_trends"] = load_recent_link_trends(limit=5)
             except Exception as exc:

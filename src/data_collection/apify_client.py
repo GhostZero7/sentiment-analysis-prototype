@@ -187,6 +187,15 @@ def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any] | N
         or item.get("storyTitle")
         or ""
     )
+    post_date = (
+        item.get("postDate")
+        or item.get("postCreatedAt")
+        or item.get("postPublishedAt")
+        or item.get("post_date")
+        or item.get("post_created_at")
+        or item.get("post_published_at")
+        or ""
+    )
 
     return {
         "comment_id": str(comment_id),
@@ -194,6 +203,7 @@ def _normalise_item(item: dict[str, Any], source_url: str) -> dict[str, Any] | N
         "timestamp": str(timestamp),
         "source_url": source_url,
         "post_title": str(post_title).strip(),
+        "post_date": str(post_date).strip(),
         "collected_at": _utc_now_iso(),
     }
 
@@ -208,6 +218,7 @@ def fetch_comments(url: str, max_comments: int | None = None) -> list[dict[str, 
     - timestamp
     - source_url
     - post_title
+    - post_date (when supplied by the actor)
     - collected_at
     """
     cleaned_url = _normalize_facebook_url((url or "").strip())
