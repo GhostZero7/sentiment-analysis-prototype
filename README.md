@@ -1,5 +1,12 @@
 # Sentiment Analysis Prototype
 
+**Project status: Completed prototype — 4 September 2026.**
+
+The end-to-end research prototype, live URL analysis, saved-link trend comparison,
+mobile-responsive dashboard, automated tests, reports, and defence preparation guide are
+complete. Production persistence and a human-annotated validation set remain documented
+future improvements rather than incomplete prototype requirements.
+
 ## Overview
 
 This prototype now includes:
@@ -22,6 +29,7 @@ Project status and planning docs:
 
 - `docs/project_work_log.md` records the completed work and current pipeline state.
 - `docs/supervisor_briefing.md` summarizes the flow for supervisor review.
+- `docs/project_defence_questions_and_answers.md` provides model defence questions and answers.
 - `docs/recommended_features.md` lists practical next features and their priority order.
 
 ## Step 1 Implemented: Apify Data Collection

@@ -222,3 +222,17 @@ Latest relevant-only RoBERTa-branch evaluation:
 
 - The codebase still keeps preprocessing, sentiment, and sarcasm logic separated into dedicated scripts and modules.
 - The final labeled dataset is now sarcasm-aware and better suited for ZESCO code-switched comments.
+
+## Prototype Completion
+
+**Status: Complete as of 4 September 2026.**
+
+The agreed prototype scope is finished: public Facebook URL collection, configurable
+comment limits, preprocessing, relevance filtering, locally adapted sentiment and emotion
+analysis, sarcasm handling, baseline model evaluation, post-title extraction, five-link
+metadata-date trend tracking, user-friendly errors, stakeholder reports, and a
+mobile-responsive Streamlit interface. The automated test suite passes at completion.
+
+Persistent production storage, broader manually annotated validation, and deeper-model
+experiments remain recommended future work and do not prevent demonstration or defence of
+the completed prototype.

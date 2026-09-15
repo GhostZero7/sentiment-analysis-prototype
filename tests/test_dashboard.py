@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.dashboard.app import _comment_emotion_table, _friendly_error_message
+from src.dashboard.app import (
+    RESPONSIVE_CSS,
+    _comment_emotion_table,
+    _display_periods,
+    _friendly_error_message,
+    _readable_trend_table,
+    _sentiment_change_explanation,
+    _sentiment_change_table,
+)
 from src.data_collection.apify_client import ApifyFetchError
 
 
@@ -55,3 +63,78 @@ def test_common_input_and_storage_errors_are_actionable():
     )
     assert "administrator" in _friendly_error_message(FileNotFoundError("model.bin"))
     assert "could not be saved" in _friendly_error_message(PermissionError("denied"))
+
+
+def test_dashboard_css_includes_mobile_layout_rules():
+    assert "@media (max-width: 768px)" in RESPONSIVE_CSS
+    assert 'data-testid="stHorizontalBlock"' in RESPONSIVE_CSS
+    assert "flex-direction: column" in RESPONSIVE_CSS
+    assert 'data-baseweb="tab-list"' in RESPONSIVE_CSS
+    assert 'data-testid="stFormSubmitButton"' in RESPONSIVE_CSS
+    assert "overflow-x: auto" in RESPONSIVE_CSS
+    assert "min-height: 2.75rem" in RESPONSIVE_CSS
+
+
+def test_trend_explanation_states_exact_sentiment_changes_in_plain_language():
+    trends = pd.DataFrame(
+        [
+            {
+                "period": "Comments 1-8",
+                "comment_count": 8,
+                "negative_percent": 37.5,
+                "neutral_percent": 25.0,
+                "positive_percent": 37.5,
+            },
+            {
+                "period": "Comments 41-47",
+                "comment_count": 7,
+                "negative_percent": 71.4,
+                "neutral_percent": 0.0,
+                "positive_percent": 28.6,
+            },
+        ]
+    )
+
+    explanation = _sentiment_change_explanation(trends, temporal=False)
+    changes = _sentiment_change_table(trends)
+
+    assert "became more negative" in explanation
+    assert "37.5% to 71.4%" in explanation
+    assert "+33.9 percentage points" in explanation
+    assert "neutral sentiment fell by 25.0 points" in explanation
+    assert "positive sentiment fell by 8.9 points" in explanation
+    assert changes.loc[changes["Sentiment"].eq("Negative"), "Meaning"].iloc[0] == "Increased"
+
+
+def test_readable_trend_table_replaces_raw_emotion_columns():
+    trends = pd.DataFrame(
+        [
+            {
+                "period": "Comments 1-4",
+                "comment_count": 4,
+                "negative_percent": 50.0,
+                "neutral_percent": 25.0,
+                "positive_percent": 25.0,
+                "nrc_frustration": 0.2,
+                "nrc_anger": 0.1,
+            },
+            {
+                "period": "Comments 5-8",
+                "comment_count": 4,
+                "negative_percent": 25.0,
+                "neutral_percent": 25.0,
+                "positive_percent": 50.0,
+                "nrc_hope": 0.3,
+            },
+        ]
+    )
+
+    readable = _readable_trend_table(trends, temporal=False)
+
+    assert _display_periods(trends, temporal=False) == [
+        "Beginning: Comments 1-4",
+        "Recent: Comments 5-8",
+    ]
+    assert "nrc_frustration" not in readable.columns
+    assert readable["Leading emotion"].tolist() == ["Frustration", "Hope"]
+    assert readable["Leading sentiment"].tolist() == ["Negative (50.0%)", "Positive (50.0%)"]

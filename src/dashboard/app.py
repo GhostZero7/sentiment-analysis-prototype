@@ -34,8 +34,6 @@ from src.temporal.event_tracker import (
     build_comment_progression,
     build_sentiment_trends,
     build_trend_events,
-    describe_comment_progression,
-    describe_negative_trend,
     find_timestamp_column,
     resolve_trend_frequency,
 )
@@ -68,6 +66,111 @@ EMOTION_COLORS = {
     "Frustration": "#E67E22",
 }
 LOGGER = logging.getLogger(__name__)
+RESPONSIVE_CSS = """
+<style>
+.block-container {
+    width: 100%;
+    max-width: 1180px;
+    padding: 2.25rem 1.5rem 2rem;
+}
+h1 {font-size: 2rem !important; line-height: 1.2 !important; overflow-wrap: anywhere;}
+h2 {font-size: 1.3rem !important; line-height: 1.3 !important; overflow-wrap: anywhere;}
+h3 {font-size: 1.08rem !important; line-height: 1.35 !important; overflow-wrap: anywhere;}
+[data-testid="stMetric"] {
+    border-bottom: 2px solid #E6E9EE;
+    padding-bottom: 0.55rem;
+    min-height: 4.15rem;
+}
+[data-testid="stMetricValue"] {
+    font-size: 1.28rem;
+    line-height: 1.2;
+    white-space: normal;
+    overflow: visible;
+}
+[data-testid="stMetricValue"] > div {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+[data-testid="stMetricLabel"] {font-size: 0.82rem; color: #5F6B7A;}
+[data-testid="stDataFrame"] {font-size: 0.86rem; max-width: 100%; overflow-x: auto;}
+.dashboard-text-metric {
+    border-bottom: 2px solid #E6E9EE;
+    padding-bottom: 0.55rem;
+    min-height: 4.15rem;
+}
+.dashboard-text-metric-label {font-size: 0.82rem; color: #5F6B7A; margin-bottom: 0.35rem;}
+.dashboard-text-metric-value {
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #172033;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+    .block-container {padding: 1.15rem 0.85rem 1.5rem !important;}
+    h1 {font-size: 1.62rem !important;}
+    h2 {font-size: 1.2rem !important;}
+    h3 {font-size: 1rem !important;}
+
+    [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+    [data-testid="column"],
+    [data-testid="stColumn"] {
+        width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 100% !important;
+    }
+    [data-baseweb="tab-list"] {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+    }
+    [data-baseweb="tab"] {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    [data-testid="stMetric"],
+    .dashboard-text-metric {
+        min-height: 0;
+        padding: 0.25rem 0 0.65rem;
+    }
+    [data-testid="stMetricValue"] {font-size: 1.15rem;}
+    [data-testid="stDataFrame"],
+    [data-testid="stTable"] {
+        width: 100% !important;
+        max-width: calc(100vw - 1.7rem) !important;
+        overflow-x: auto !important;
+    }
+    [data-testid="stAlert"] {overflow-wrap: anywhere;}
+    [data-testid="stButton"] button,
+    [data-testid="stFormSubmitButton"] button,
+    [data-testid="stDownloadButton"] button {
+        width: 100%;
+        min-height: 2.75rem;
+        white-space: normal;
+    }
+    input, textarea, select {font-size: 16px !important;}
+    iframe, canvas, svg {max-width: 100% !important;}
+}
+
+@media (max-width: 420px) {
+    .block-container {padding-left: 0.65rem !important; padding-right: 0.65rem !important;}
+    h1 {font-size: 1.48rem !important;}
+    [data-baseweb="tab"] {padding-left: 0.6rem !important; padding-right: 0.6rem !important;}
+    [data-testid="stDataFrame"],
+    [data-testid="stTable"] {max-width: calc(100vw - 1.3rem) !important;}
+}
+</style>
+"""
 
 
 def _friendly_error_message(
@@ -117,25 +220,7 @@ def _render_safely(section_name: str, renderer, *args, **kwargs) -> None:
 
 
 def _inject_styles() -> None:
-    st.markdown(
-        """
-        <style>
-        .block-container {max-width: 1180px; padding-top: 2.25rem; padding-bottom: 2rem;}
-        h1 {font-size: 2rem !important; line-height: 1.2 !important;}
-        h2 {font-size: 1.3rem !important; line-height: 1.3 !important;}
-        h3 {font-size: 1.08rem !important; line-height: 1.35 !important;}
-        [data-testid="stMetric"] {border-bottom: 2px solid #E6E9EE; padding-bottom: 0.55rem; min-height: 4.15rem;}
-        [data-testid="stMetricValue"] {font-size: 1.28rem; line-height: 1.2; white-space: normal; overflow: visible;}
-        [data-testid="stMetricValue"] > div {white-space: normal; overflow: visible; text-overflow: clip;}
-        [data-testid="stMetricLabel"] {font-size: 0.82rem; color: #5F6B7A;}
-        [data-testid="stDataFrame"] {font-size: 0.86rem;}
-        .dashboard-text-metric {border-bottom: 2px solid #E6E9EE; padding-bottom: 0.55rem; min-height: 4.15rem;}
-        .dashboard-text-metric-label {font-size: 0.82rem; color: #5F6B7A; margin-bottom: 0.35rem;}
-        .dashboard-text-metric-value {font-size: 1.05rem; font-weight: 600; line-height: 1.25; color: #172033; overflow-wrap: anywhere;}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown(RESPONSIVE_CSS, unsafe_allow_html=True)
 
 
 def _compact_bar_chart(
@@ -201,45 +286,232 @@ def _text_metric(container, label: str, value: str) -> None:
     )
 
 
-def _compact_line_chart(
-    frame: pd.DataFrame,
-    *,
-    value_columns: list[str],
-    labels: dict[str, str],
-    colors: dict[str, str],
-    temporal: bool,
-    value_title: str,
-    height: int = 230,
-) -> None:
-    if frame.empty or not value_columns:
-        return
-    chart_data = frame[["period", *value_columns]].melt(
-        id_vars="period",
-        var_name="series",
-        value_name="value",
+def _display_periods(trends: pd.DataFrame, *, temporal: bool) -> list[str]:
+    if trends.empty:
+        return []
+    if temporal:
+        labels: list[str] = []
+        for value in trends["period"]:
+            parsed = pd.to_datetime(value, errors="coerce")
+            if pd.isna(parsed):
+                labels.append(str(value))
+            elif parsed.hour or parsed.minute:
+                labels.append(parsed.strftime("%d %b %Y, %H:%M"))
+            else:
+                labels.append(parsed.strftime("%d %b %Y"))
+        return labels
+
+    raw = trends["period"].fillna("").astype(str).tolist()
+    if len(raw) == 1:
+        prefixes = ["Discussion"]
+    elif len(raw) == 2:
+        prefixes = ["Beginning", "Recent"]
+    else:
+        prefixes = ["Beginning", *["Middle"] * (len(raw) - 2), "Recent"]
+    return [f"{prefix}: {period}" for prefix, period in zip(prefixes, raw)]
+
+
+def _leading_emotion(row: pd.Series) -> str:
+    scores = {
+        column.removeprefix("nrc_").replace("_", " ").title(): float(
+            pd.to_numeric(pd.Series([row.get(column, 0)]), errors="coerce").fillna(0).iloc[0]
+        )
+        for column in EMOTION_COLUMNS
+    }
+    emotion, score = max(scores.items(), key=lambda item: item[1], default=("", 0.0))
+    return emotion if score > 0 else "No strong signal"
+
+
+def _readable_trend_table(trends: pd.DataFrame, *, temporal: bool) -> pd.DataFrame:
+    columns = [
+        "Stage or period",
+        "Comments",
+        "Negative %",
+        "Neutral %",
+        "Positive %",
+        "Leading sentiment",
+        "Leading emotion",
+    ]
+    if trends.empty:
+        return pd.DataFrame(columns=columns)
+
+    rows: list[dict[str, object]] = []
+    display_periods = _display_periods(trends, temporal=temporal)
+    for position, (_, row) in enumerate(trends.iterrows()):
+        sentiment_scores = {
+            "Negative": float(row.get("negative_percent", 0)),
+            "Neutral": float(row.get("neutral_percent", 0)),
+            "Positive": float(row.get("positive_percent", 0)),
+        }
+        leading_sentiment, leading_share = max(
+            sentiment_scores.items(), key=lambda item: item[1]
+        )
+        rows.append(
+            {
+                "Stage or period": display_periods[position],
+                "Comments": int(row.get("comment_count", 0)),
+                "Negative %": round(sentiment_scores["Negative"], 1),
+                "Neutral %": round(sentiment_scores["Neutral"], 1),
+                "Positive %": round(sentiment_scores["Positive"], 1),
+                "Leading sentiment": f"{leading_sentiment} ({leading_share:.1f}%)",
+                "Leading emotion": _leading_emotion(row),
+            }
+        )
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _sentiment_change_table(trends: pd.DataFrame) -> pd.DataFrame:
+    columns = ["Sentiment", "Earlier %", "Latest %", "Change (points)", "Meaning"]
+    if len(trends) < 2:
+        return pd.DataFrame(columns=columns)
+
+    earlier = trends.iloc[0]
+    latest = trends.iloc[-1]
+    rows: list[dict[str, object]] = []
+    for sentiment in ("Negative", "Neutral", "Positive"):
+        column = f"{sentiment.lower()}_percent"
+        start = float(earlier.get(column, 0))
+        end = float(latest.get(column, 0))
+        change = round(end - start, 1)
+        if abs(change) < 2:
+            meaning = "Broadly stable"
+        else:
+            meaning = "Increased" if change > 0 else "Decreased"
+        rows.append(
+            {
+                "Sentiment": sentiment,
+                "Earlier %": round(start, 1),
+                "Latest %": round(end, 1),
+                "Change (points)": f"{change:+.1f}",
+                "Meaning": meaning,
+            }
+        )
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _sentiment_change_explanation(trends: pd.DataFrame, *, temporal: bool) -> str:
+    if trends.empty:
+        return "There are not enough comments to explain a sentiment change."
+    latest = trends.iloc[-1]
+    latest_scores = {
+        "negative": float(latest.get("negative_percent", 0)),
+        "neutral": float(latest.get("neutral_percent", 0)),
+        "positive": float(latest.get("positive_percent", 0)),
+    }
+    latest_sentiment, latest_share = max(latest_scores.items(), key=lambda item: item[1])
+    if len(trends) < 2:
+        return (
+            f"This is a single snapshot. {latest_sentiment.title()} sentiment is the largest "
+            f"share at {latest_share:.1f}%, so a direction of change cannot yet be established."
+        )
+
+    earlier = trends.iloc[0]
+    changes = {
+        sentiment: round(
+            float(latest.get(f"{sentiment}_percent", 0))
+            - float(earlier.get(f"{sentiment}_percent", 0)),
+            1,
+        )
+        for sentiment in ("negative", "neutral", "positive")
+    }
+    negative_start = float(earlier.get("negative_percent", 0))
+    negative_end = float(latest.get("negative_percent", 0))
+    if changes["negative"] >= 5:
+        overall = "The discussion became more negative."
+    elif changes["negative"] <= -5:
+        overall = "The discussion became less negative."
+    else:
+        overall = "Negative sentiment was broadly stable."
+
+    direction_details = []
+    for sentiment in ("neutral", "positive"):
+        change = changes[sentiment]
+        if abs(change) < 2:
+            direction_details.append(f"{sentiment} sentiment stayed broadly stable")
+        else:
+            direction = "rose" if change > 0 else "fell"
+            direction_details.append(
+                f"{sentiment} sentiment {direction} by {abs(change):.1f} points"
+            )
+    context = "between the first and latest period" if temporal else "from the beginning to the recent comments"
+    in_ten = min(10, max(0, round(latest_share / 10)))
+    return (
+        f"{overall} Negative sentiment changed from {negative_start:.1f}% to "
+        f"{negative_end:.1f}% ({changes['negative']:+.1f} percentage points) {context}. "
+        f"Meanwhile, {direction_details[0]} and {direction_details[1]}. In the latest group, "
+        f"{latest_sentiment} was the largest share at {latest_share:.1f}% - about {in_ten} in "
+        "every 10 comments."
     )
-    chart_data["series"] = chart_data["series"].map(labels).fillna(chart_data["series"])
-    x_type = "T" if temporal else "N"
-    chart = (
+
+
+def _sentiment_composition_chart(trends: pd.DataFrame, *, temporal: bool) -> None:
+    if trends.empty:
+        return
+    display_periods = _display_periods(trends, temporal=temporal)
+    chart_data = trends[
+        ["negative_percent", "neutral_percent", "positive_percent"]
+    ].copy()
+    chart_data["Stage or period"] = display_periods
+    chart_data = chart_data.melt(
+        id_vars="Stage or period",
+        var_name="sentiment",
+        value_name="share",
+    )
+    chart_data["sentiment"] = chart_data["sentiment"].map(
+        {
+            "negative_percent": "Negative",
+            "neutral_percent": "Neutral",
+            "positive_percent": "Positive",
+        }
+    )
+    order = {"Negative": 0, "Neutral": 1, "Positive": 2}
+    chart_data["sentiment_order"] = chart_data["sentiment"].map(order)
+    chart_data["start"] = chart_data.groupby("Stage or period", sort=False)["share"].cumsum() - chart_data["share"]
+    chart_data["midpoint"] = chart_data["start"] + chart_data["share"] / 2
+    chart_data["share_label"] = chart_data["share"].map(lambda value: f"{value:.0f}%")
+
+    bars = (
         alt.Chart(chart_data)
-        .mark_line(point=alt.OverlayMarkDef(size=48), strokeWidth=2.2)
+        .mark_bar(cornerRadius=3)
         .encode(
-            x=alt.X(f"period:{x_type}", title=None, sort=None, axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("value:Q", title=value_title, axis=alt.Axis(grid=True, tickCount=5)),
-            color=alt.Color(
-                "series:N",
+            y=alt.Y(
+                "Stage or period:N",
                 title=None,
-                scale=alt.Scale(domain=list(colors), range=list(colors.values())),
+                sort=display_periods,
+                axis=alt.Axis(labelLimit=240),
             ),
+            x=alt.X(
+                "share:Q",
+                title="Share of comments (%)",
+                stack="zero",
+                scale=alt.Scale(domain=[0, 100]),
+            ),
+            color=alt.Color(
+                "sentiment:N",
+                title=None,
+                scale=alt.Scale(
+                    domain=list(SENTIMENT_COLORS),
+                    range=list(SENTIMENT_COLORS.values()),
+                ),
+            ),
+            order=alt.Order("sentiment_order:Q"),
             tooltip=[
-                alt.Tooltip(f"period:{x_type}", title="Group" if not temporal else "Period"),
-                alt.Tooltip("series:N", title="Measure"),
-                alt.Tooltip("value:Q", title=value_title, format=".2f"),
+                alt.Tooltip("Stage or period:N", title="Stage or period"),
+                alt.Tooltip("sentiment:N", title="Sentiment"),
+                alt.Tooltip("share:Q", title="Share", format=".1f"),
             ],
         )
-        .properties(height=height)
     )
-    st.altair_chart(chart, width="stretch")
+    labels = (
+        alt.Chart(chart_data[chart_data["share"].ge(8)])
+        .mark_text(color="white", fontWeight="bold", fontSize=11)
+        .encode(
+            y=alt.Y("Stage or period:N", sort=display_periods),
+            x=alt.X("midpoint:Q", scale=alt.Scale(domain=[0, 100])),
+            text="share_label:N",
+        )
+    )
+    st.altair_chart((bars + labels).properties(height=max(150, len(trends) * 52)), width="stretch")
 
 
 def _boolean_series(values: pd.Series) -> pd.Series:
@@ -415,18 +687,18 @@ def _render_recent_link_trends(trends: pd.DataFrame) -> None:
             "a direction of change."
         )
     else:
-        st.caption(describe_negative_trend(trends))
-        _compact_line_chart(
-            trends,
-            value_columns=["negative_percent", "neutral_percent", "positive_percent"],
-            labels={
-                "negative_percent": "Negative",
-                "neutral_percent": "Neutral",
-                "positive_percent": "Positive",
-            },
-            colors=SENTIMENT_COLORS,
-            temporal=True,
-            value_title="Share of relevant comments (%)",
+        st.info(_sentiment_change_explanation(trends, temporal=True))
+        st.subheader("How Sentiment Differed Across the Saved Links")
+        st.caption(
+            "Each bar represents one Facebook discussion. The colored sections show how the "
+            "relevant comments in that link were divided between negative, neutral, and positive."
+        )
+        _sentiment_composition_chart(trends, temporal=True)
+        st.subheader("Earlier Link Compared with Latest Link")
+        st.dataframe(
+            _sentiment_change_table(trends),
+            width="stretch",
+            hide_index=True,
         )
         changes = trends["negative_percent"].diff().abs()
         if changes.notna().any():
@@ -514,7 +786,7 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
         frequency="Automatic",
         label_column=label_column,
     )
-    progression = build_comment_progression(frame, label_column=label_column)
+    progression = build_comment_progression(frame, segments=3, label_column=label_column)
     has_calendar_trend = len(automatic) >= 2
     if has_calendar_trend:
         basis = st.segmented_control(
@@ -546,81 +818,77 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
         temporal = True
         if frequency == "Automatic":
             st.caption(f"Automatic grouping selected: {automatic_frequency}.")
-        st.caption(describe_negative_trend(trends))
-        sentiment_heading = "Sentiment Over Time"
     else:
         trends = progression
         temporal = False
         resolved_frequency = ""
-        st.caption(describe_comment_progression(trends))
-        sentiment_heading = "Sentiment Across the Discussion"
 
     if trends.empty:
         st.info("There are not enough valid comments to calculate movement.")
         return
 
-    st.subheader(sentiment_heading)
-    _compact_line_chart(
-        trends,
-        value_columns=["negative_percent", "neutral_percent", "positive_percent"],
-        labels={
-            "negative_percent": "Negative",
-            "neutral_percent": "Neutral",
-            "positive_percent": "Positive",
-        },
-        colors=SENTIMENT_COLORS,
-        temporal=temporal,
-        value_title="Share of comments (%)",
+    st.info(_sentiment_change_explanation(trends, temporal=temporal))
+    latest = trends.iloc[-1]
+    latest_sentiments = {
+        "Negative": float(latest.get("negative_percent", 0)),
+        "Neutral": float(latest.get("neutral_percent", 0)),
+        "Positive": float(latest.get("positive_percent", 0)),
+    }
+    latest_name, latest_share = max(latest_sentiments.items(), key=lambda item: item[1])
+    negative_change = (
+        float(latest.get("negative_percent", 0))
+        - float(trends.iloc[0].get("negative_percent", 0))
+        if len(trends) >= 2
+        else None
     )
+    summary_columns = st.columns(3)
+    _text_metric(summary_columns[0], "Latest dominant sentiment", f"{latest_name} ({latest_share:.1f}%)")
+    _text_metric(
+        summary_columns[1],
+        "Negative sentiment change",
+        f"{negative_change:+.1f} points" if negative_change is not None else "One period only",
+    )
+    _text_metric(summary_columns[2], "Latest leading emotion", _leading_emotion(latest))
 
-    volume_column, emotion_column = st.columns([0.8, 1.2])
-    with volume_column:
-        st.subheader("Comment Volume")
-        _compact_bar_chart(
-            trends,
-            category="period",
-            value="comment_count",
-            height=190,
-            value_title="Comments",
+    st.subheader("How Sentiment Changed")
+    st.caption(
+        "Each bar totals 100%. Read from the beginning at the top to the latest comments at "
+        "the bottom; a larger red section means a larger share of negative comments."
+        if not temporal
+        else "Each bar totals 100%. Read the periods in order; a larger red section means a "
+        "larger share of negative comments in that period."
+    )
+    _sentiment_composition_chart(trends, temporal=temporal)
+
+    if len(trends) >= 2:
+        st.subheader("Beginning Compared with Latest")
+        st.caption(
+            "Change is measured in percentage points. For example, moving from 30% to 50% "
+            "is an increase of 20 points."
         )
-    with emotion_column:
-        st.subheader("Emotion Movement")
-        emotion_columns = [
-            column
-            for column in ("nrc_frustration", "nrc_anger", "nrc_hope", "nrc_trust")
-            if column in trends.columns
-        ]
-        _compact_line_chart(
-            trends,
-            value_columns=emotion_columns,
-            labels={column: column.removeprefix("nrc_").title() for column in emotion_columns},
-            colors={
-                column.removeprefix("nrc_").title(): EMOTION_COLORS[
-                    column.removeprefix("nrc_").title()
-                ]
-                for column in emotion_columns
-            },
-            temporal=temporal,
-            value_title="Average score",
-            height=190,
+        st.dataframe(
+            _sentiment_change_table(trends),
+            width="stretch",
+            hide_index=True,
         )
 
+    st.subheader("Readable Trend Table")
+    st.caption(
+        "This table keeps only the values needed to explain the trend. Technical NRC emotion "
+        "columns are summarized as one leading emotion."
+    )
     st.dataframe(
-        trends.rename(
-            columns={
-                "period": "Period",
-                "comment_count": "Comments",
-                "negative_percent": "Negative %",
-                "neutral_percent": "Neutral %",
-                "positive_percent": "Positive %",
-                "sarcasm_percent": "Sarcasm %",
-            }
-        ),
+        _readable_trend_table(trends, temporal=temporal),
         width="stretch",
         hide_index=True,
+        column_config={
+            "Stage or period": st.column_config.TextColumn(width="large"),
+            "Leading sentiment": st.column_config.TextColumn(width="medium"),
+            "Leading emotion": st.column_config.TextColumn(width="medium"),
+        },
     )
     if temporal:
-        st.subheader("What May Explain the Movement")
+        st.subheader("What the Comments Suggest Changed")
         events = build_trend_events(
             frame,
             trends,
@@ -633,12 +901,17 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
                 "be needed before discussion events can be identified."
             )
         else:
+            strongest = events.iloc[0]
+            st.info(
+                f"The strongest detected change was: {strongest['movement']}. "
+                f"The comments in that period suggest: {strongest['evidence']}"
+            )
             event_table = events.rename(
                 columns={
                     "period": "Period",
-                    "movement": "Detected movement",
-                    "evidence": "Discussion evidence",
-                    "representative_comment": "Representative public comment",
+                    "movement": "How sentiment changed",
+                    "evidence": "What commenters were discussing",
+                    "representative_comment": "Example public comment",
                 }
             )
             st.dataframe(
@@ -646,13 +919,13 @@ def _render_trends(frame: pd.DataFrame, label_column: str) -> None:
                 width="stretch",
                 hide_index=True,
                 column_config={
-                    "Discussion evidence": st.column_config.TextColumn(width="large"),
-                    "Representative public comment": st.column_config.TextColumn(width="large"),
+                    "What commenters were discussing": st.column_config.TextColumn(width="large"),
+                    "Example public comment": st.column_config.TextColumn(width="large"),
                 },
             )
             st.caption(
-                "These are discussion events inferred from comment timing, volume, topics, and "
-                "emotions. They indicate association, not verified real-world causation."
+                "This explanation uses comment timing, leading topics, emotions, and example "
+                "comments. It shows association, not proof that an external event caused the change."
             )
     st.caption(
         "Calendar trends depend on Facebook timestamps. Comment progression uses ordered groups "

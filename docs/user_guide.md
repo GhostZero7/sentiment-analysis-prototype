@@ -40,6 +40,9 @@ analysis** in the sidebar to return to the empty state.
 The sidebar can restrict the current URL results to relevant energy comments and an
 available date range.
 
+On phones, dashboard sections stack vertically, tabs can be swiped horizontally, buttons
+expand to the available width, and wide evidence tables remain horizontally scrollable.
+
 ## Overview
 
 The Overview tab shows:
@@ -55,11 +58,17 @@ Every consideration includes the supporting topic volume and sentiment evidence.
 
 ## Trends
 
-The Trends tab can group results automatically or by hour, day, week, or month. It shows
-sentiment percentages, comment volume, selected emotions, sarcasm frequency, and a
-plain-language summary of the negative-sentiment direction. The explanation table links
-strong changes to discussion volume, leading topics, detected emotions, and a
-representative public comment.
+The Trends tab can group results automatically or by hour, day, week, or month. When
+calendar timing is unavailable, it compares three ordered stages: beginning, middle, and
+recent comments. A 100% stacked bar shows the negative, neutral, and positive share in each
+stage or period. A plain-language explanation states exactly how sentiment changed, while a
+beginning-versus-latest table shows each change in percentage points. The readable trend
+table shows only comment count, sentiment shares, leading sentiment, and leading emotion;
+technical NRC columns and equal-sized comment-volume charts are intentionally omitted.
+
+For calendar trends, a separate explanation identifies the strongest change and connects it
+to the leading topic, emotion, and an example public comment. This makes the chart suitable
+for presentation while preserving supporting evidence.
 
 These explanations identify events within the discussion. They do not claim that an
 external real-world event caused a sentiment change unless separate evidence verifies it.
