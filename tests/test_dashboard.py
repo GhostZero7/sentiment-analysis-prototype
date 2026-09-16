@@ -51,11 +51,24 @@ def test_user_facing_errors_hide_technical_details():
     )
 
     assert apify_message == (
-        "Apify tokens are depleted. Please try again after the tokens are renewed."
+        "Comments could not be collected from Apify. Please try again. "
+        "If this continues, contact the administrator."
     )
     assert "402" not in apify_message
+    assert "depleted" not in apify_message
+    assert "billing" not in apify_message
     assert generic_message == "The comments could not be analyzed. Please try again."
     assert "database" not in generic_message
+
+
+def test_apify_billing_and_rate_limits_have_distinct_safe_messages():
+    billing = _friendly_error_message(ApifyFetchError("private details", reason="billing"))
+    rate_limit = _friendly_error_message(ApifyFetchError("private details", reason="rate_limit"))
+
+    assert "billing or usage restriction" in billing
+    assert "too many requests" in rate_limit
+    assert "billing" not in rate_limit
+    assert "private details" not in billing + rate_limit
 
 
 def test_common_input_and_storage_errors_are_actionable():

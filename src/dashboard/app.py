@@ -182,7 +182,7 @@ def _friendly_error_message(
 ) -> str:
     """Return a short user-safe message while technical details remain in server logs."""
     if isinstance(error, ApifyFetchError):
-        return "Apify tokens are depleted. Please try again after the tokens are renewed."
+        return error.user_message
     if isinstance(error, ValueError):
         return "Enter a valid public Facebook post URL and try again."
     if isinstance(error, FileNotFoundError):

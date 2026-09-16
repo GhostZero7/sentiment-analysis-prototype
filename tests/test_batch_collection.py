@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from datetime import timedelta
+from enum import Enum
+from types import SimpleNamespace
+
 import pandas as pd
 import pytest
 
@@ -163,6 +167,82 @@ def test_apify_client_supports_legacy_actor_call_without_timeout(monkeypatch):
     assert len(rows) == 1
     assert captured["run_input"]["resultsLimit"] == 300
     assert captured["dataset_id"] == "legacy-dataset"
+
+
+def test_apify_client_reads_v3_run_objects_and_preserves_timeout(monkeypatch):
+    calls = []
+
+    class Status(Enum):
+        SUCCEEDED = "SUCCEEDED"
+
+    class ActorV3:
+        def call(self, *, run_input, run_timeout):
+            calls.append((run_input, run_timeout))
+            return SimpleNamespace(default_dataset_id="typed-dataset", status=Status.SUCCEEDED)
+
+    def dataset(dataset_id):
+        assert dataset_id == "typed-dataset"
+        return SimpleNamespace(iterate_items=lambda: [{"commentId": "1", "text": "Power is back"}])
+
+    monkeypatch.setattr(apify_client, "_load_config", lambda: apify_client.ApifyConfig(api_key="test"))
+    monkeypatch.setattr(apify_client, "ApifyClient", lambda key: SimpleNamespace(actor=lambda name: ActorV3(), dataset=dataset))
+
+    rows = apify_client.fetch_comments("https://www.facebook.com/page/posts/123/", max_comments=10)
+
+    assert [row["text"] for row in rows] == ["Power is back"]
+    assert len(calls) == 1
+    assert calls[0][0]["resultsLimit"] == 10
+    assert calls[0][1] == timedelta(seconds=120)
+
+
+@pytest.mark.parametrize("status", ["FAILED", "TIMED-OUT", "ABORTED"])
+@pytest.mark.parametrize("typed_run", [False, True])
+def test_unsuccessful_runs_are_not_read_as_success(monkeypatch, status, typed_run):
+    if typed_run:
+        run = SimpleNamespace(default_dataset_id="partial-dataset", status=status)
+    else:
+        run = {"defaultDatasetId": "partial-dataset", "status": status}
+    actor = SimpleNamespace(call=lambda run_input: run)
+    client = SimpleNamespace(actor=lambda name: actor)
+    monkeypatch.setattr(apify_client, "_load_config", lambda: apify_client.ApifyConfig(api_key="test"))
+    monkeypatch.setattr(apify_client, "ApifyClient", lambda key: client)
+
+    with pytest.raises(apify_client.ApifyFetchError, match=status) as failure:
+        apify_client.fetch_comments("https://www.facebook.com/page/posts/123/")
+
+    assert failure.value.reason == ("timeout" if status == "TIMED-OUT" else "collection")
+
+
+@pytest.mark.parametrize(
+    ("status_code", "error_type", "reason"),
+    [
+        (402, "not-enough-usage-to-run-paid-actor", "billing"),
+        (401, "invalid-token", "authentication"),
+        (403, "insufficient-permissions", "authentication"),
+        (429, "rate-limit-exceeded", "rate_limit"),
+        (402, "actor-memory-limit-exceeded", "resource_limit"),
+        (403, "concurrent-runs-limit-exceeded", "resource_limit"),
+        (500, "internal-server-error", "collection"),
+    ],
+)
+def test_fetch_errors_preserve_actual_failure_category(monkeypatch, status_code, error_type, reason):
+    error = RuntimeError("private diagnostic text")
+    error.status_code = status_code
+    error.type = error_type
+
+    def call(*, run_input):
+        raise error
+
+    client = SimpleNamespace(actor=lambda name: SimpleNamespace(call=call))
+    monkeypatch.setattr(apify_client, "_load_config", lambda: apify_client.ApifyConfig(api_key="test"))
+    monkeypatch.setattr(apify_client, "ApifyClient", lambda key: client)
+
+    with pytest.raises(apify_client.ApifyFetchError) as failure:
+        apify_client.fetch_comments("https://www.facebook.com/page/posts/123/")
+
+    assert failure.value.reason == reason
+    assert failure.value.__cause__ is error
+    assert "private diagnostic text" not in failure.value.user_message
 
 
 def test_apify_client_rejects_parent_linked_reply_and_strips_structured_mention():
