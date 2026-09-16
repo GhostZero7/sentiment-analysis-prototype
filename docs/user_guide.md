@@ -29,6 +29,9 @@ Facebook comment timestamp. It never uses the analysis or collection date for th
 The comparison uses saved relevant comments and does not contact Apify. The Facebook post
 title is shown when it is available from the public post metadata.
 
+The selected dashboard tab is retained during button reruns. Selecting **Track trend**
+therefore loads the comparison inside **Trends** without returning to **Analyze URL**.
+
 For comparisons collected over weeks or months, the deployed app must use persistent
 storage. A free Render web service does not preserve locally written analysis files across
 all restarts, redeploys, and spin-downs.

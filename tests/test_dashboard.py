@@ -5,6 +5,7 @@ import pandas as pd
 from src.dashboard.app import (
     RESPONSIVE_CSS,
     _comment_emotion_table,
+    _dashboard_tabs,
     _display_periods,
     _friendly_error_message,
     _readable_trend_table,
@@ -73,6 +74,30 @@ def test_dashboard_css_includes_mobile_layout_rules():
     assert 'data-testid="stFormSubmitButton"' in RESPONSIVE_CSS
     assert "overflow-x: auto" in RESPONSIVE_CSS
     assert "min-height: 2.75rem" in RESPONSIVE_CSS
+
+
+def test_dashboard_tabs_preserve_the_selected_view_on_button_reruns(monkeypatch):
+    captured: dict[str, object] = {}
+    expected_tabs = [object() for _ in range(6)]
+
+    def fake_tabs(labels, **kwargs):
+        captured["labels"] = labels
+        captured.update(kwargs)
+        return expected_tabs
+
+    monkeypatch.setattr("src.dashboard.app.st.tabs", fake_tabs)
+
+    assert _dashboard_tabs() == expected_tabs
+    assert captured["labels"] == [
+        "Analyze URL",
+        "Overview",
+        "Trends",
+        "Topics",
+        "Comments",
+        "Report",
+    ]
+    assert captured["key"] == "active_dashboard_tab"
+    assert captured["on_change"] == "rerun"
 
 
 def test_trend_explanation_states_exact_sentiment_changes_in_plain_language():

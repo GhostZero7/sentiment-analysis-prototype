@@ -66,6 +66,8 @@ EMOTION_COLORS = {
     "Frustration": "#E67E22",
 }
 LOGGER = logging.getLogger(__name__)
+DASHBOARD_TAB_LABELS = ["Analyze URL", "Overview", "Trends", "Topics", "Comments", "Report"]
+DASHBOARD_TAB_STATE_KEY = "active_dashboard_tab"
 RESPONSIVE_CSS = """
 <style>
 .block-container {
@@ -221,6 +223,15 @@ def _render_safely(section_name: str, renderer, *args, **kwargs) -> None:
 
 def _inject_styles() -> None:
     st.markdown(RESPONSIVE_CSS, unsafe_allow_html=True)
+
+
+def _dashboard_tabs():
+    """Create stateful tabs so button reruns preserve the user's selected view."""
+    return st.tabs(
+        DASHBOARD_TAB_LABELS,
+        key=DASHBOARD_TAB_STATE_KEY,
+        on_change="rerun",
+    )
 
 
 def _compact_bar_chart(
@@ -1243,8 +1254,8 @@ def main() -> None:
     if flash:
         st.success(str(flash))
 
-    analyze_tab, overview_tab, trends_tab, topics_tab, comments_tab, report_tab = st.tabs(
-        ["Analyze URL", "Overview", "Trends", "Topics", "Comments", "Report"]
+    analyze_tab, overview_tab, trends_tab, topics_tab, comments_tab, report_tab = (
+        _dashboard_tabs()
     )
     with analyze_tab:
         _render_url_analysis()
